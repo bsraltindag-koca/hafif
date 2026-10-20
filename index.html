@@ -186,6 +186,16 @@ svg{display:block}
 .td-saved{color:var(--ink3);font-size:var(--fs-label);text-align:right;margin-top:4px;min-height:14px}
 .td-kcal{margin:-2px 0 12px}
 .td-kcal-row{display:flex;justify-content:space-between;font-size:var(--fs-sec);color:var(--ink2);margin-top:6px}
+.ml-est{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:12px}
+.ml-est-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:var(--fs-sec);color:var(--ink2);margin-bottom:4px}
+.ml-est-h b{color:var(--ink);font-size:var(--fs-body);font-weight:600}
+.ml-est-row{display:flex;justify-content:space-between;gap:10px;font-size:var(--fs-sec);padding:3px 0}
+.ml-est-row span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ml-est-row.miss{color:var(--ink3)}
+.ml-est-note{font-size:var(--fs-label);color:var(--ink3);margin-top:6px}
+.ml-kcal-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.ml-kcal-h .ui-label{margin-bottom:6px}
+.ml-kcal-tag{font-size:var(--fs-label);color:var(--ink2)}
 
 /* ---------- kilo ---------- */
 .wt-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
@@ -254,7 +264,7 @@ svg{display:block}
 <div id="app"></div>
 <script>
 'use strict';
-const APP_VERSION = '1.0';
+const APP_VERSION = '1.1';
 const STORE_KEY = 'hafif.v1';
 
 /* ---------------- yardımcılar ---------------- */
@@ -382,6 +392,214 @@ const QUOTES = [
   'Bir hafta önceki sen, bugünkü haline gurur duyardı.',
   'Kendine yalnızca bir şey söz ver: bugün de pes etmeyeceğim.',
 ];
+
+/* ---------------- kalori tahmini ----------------
+   Her satır: anahtar kelimeler | 100 g'daki kcal | varsayılan porsiyon (g) | birime özel gram (isteğe bağlı)
+   Değerler genel ortalamalardır; tarif ve porsiyona göre değişir. */
+const FOOD_DB = `
+haşlanmış yumurta,yumurta|155|50|adet:50,tane:50
+yumurtalı omlet|154|60
+omlet|154|120
+menemen|110|200
+sahanda yumurta,sahanda|196|100
+beyaz peynir,peynir|260|30|dilim:30,kaşık:15
+kaşar|360|30|dilim:20
+lor|100|50|kaşık:20
+labne,krem peynir|230|30|kaşık:15,tatlı kaşığı:8
+tulum peynir|330|30
+hellim|320|40|dilim:20
+zeytin|140|20|adet:4,tane:4
+domates|18|100|adet:120,dilim:20
+salatalık,hıyar|15|100|adet:120
+biber|20|30|adet:30
+marul,yeşillik,maydanoz,roka,dereotu|20|40
+ekme,ekmeğ|265|25|dilim:25,adet:250
+tam buğday ekmeğ,tam buğday ekmek,tam tahıllı ekmeğ,tam tahıllı ekmek,çavdar ekmeğ,çavdar ekmek,kepekli ekmeğ,kepekli ekmek,tam buğday,tam tahıl,çavdar,kepekli|247|25|dilim:25,adet:250
+simit|300|100
+poğaça|360|70
+açma|380|80
+börek|300|120|dilim:100
+tost|260|130|dilim:65
+lavaş|280|60
+bazlama|270|100
+yufka|300|60
+bal|304|20|kaşık:20,tatlı kaşığı:8,çay kaşığı:5
+reçel|250|20|kaşık:20,tatlı kaşığı:8,çay kaşığı:5
+tereyağ|717|10|kaşık:12,tatlı kaşığı:6,çay kaşığı:4
+pekmez|290|20|kaşık:20,tatlı kaşığı:8
+tahin|600|15|kaşık:15,tatlı kaşığı:7
+fıstık ezmesi|590|16|kaşık:16,tatlı kaşığı:8
+nutella,çikolatalı krema|540|15|kaşık:18,tatlı kaşığı:8
+süt|60|200
+yoğurt|60|150|kaşık:20
+ayran|35|200
+kefir|50|200
+yulaf|380|40|kaşık:10
+granola|450|40|kaşık:10
+müsli|370|40|kaşık:10
+mısır gevreği,corn flakes|380|30
+elma|52|180
+muz|89|120
+portakal|47|180
+mandalina|53|80
+armut|57|180
+çilek|32|150|adet:15,tane:15
+üzüm|69|150|tane:5
+karpuz|30|300|dilim:300
+kavun|34|250|dilim:250
+şeftali|39|150
+kiraz|63|150|tane:8
+kayısı|48|40
+kuru kayısı|241|8|adet:8,tane:8
+hurma|282|8|adet:8,tane:8
+kuru üzüm|300|30|kaşık:10
+kuru incir|250|20|adet:20,tane:20
+incir|74|50
+nar|83|200
+kivi|61|75
+avokado|160|150
+ceviz|654|30|adet:5,tane:5
+badem|579|30|adet:1.2,tane:1.2
+fındık|628|30|adet:1.5,tane:1.5
+fıstık|567|30|adet:1,tane:1
+kaju|553|30|adet:1.5,tane:1.5
+leblebi|380|30
+çekirdek|580|30
+mercimek çorba|65|250
+ezogelin|65|250
+tarhana|55|250
+yayla çorba|60|250
+domates çorba|45|250
+tavuk çorba,tavuk suyu|45|250
+çorba|55|250
+pilav,pirinç|160|150|kaşık:25
+bulgur|120|150|kaşık:25
+makarna|158|200|kaşık:25
+erişte|160|200
+mantı|220|250
+lahmacun|230|120
+pide|270|250
+pizza|270|100
+hamburger|250|220
+dürüm|230|300
+döner|220|150
+köfte|250|150|adet:30,tane:30
+tavuk göğs,ızgara tavuk,tavuk ızgara|165|150|dilim:30
+tavuk sote,tavuk|190|150
+et sote,kavurma,biftek,bonfile|250|150
+kıyma|250|100|kaşık:20
+balık,levrek,çipura,hamsi|150|200
+somon|208|150
+ton balığ|130|80|kutu:80
+karnıyarık|140|250
+kuru fasulye,fasulye|120|250|kaşık:30
+nohut|140|250|kaşık:30
+barbunya|120|200
+zeytinyağlı,taze fasulye,ıspanak,pırasa,kabak,bamya,türlü,enginar,bezelye|80|200|kaşık:30
+dolma,sarma|160|150|adet:30,tane:30
+patates kızartma,kızartma|300|120
+patates|87|150|adet:150
+brokoli,karnabahar,haşlanmış sebze,sebze|35|150
+tavuk salata,tavuklu salata,ton balıklı salata,sezar salata|110|300
+çoban salata,salata|40|200
+mevsim salata,yeşil salata|20|200
+zeytinyağ|884|10|kaşık:10,tatlı kaşığı:5,çay kaşığı:3
+humus|170|60|kaşık:20
+cacık|50|150
+haydari|150|60|kaşık:20
+hindi füme,hindi|110|30|dilim:15
+sucuk|450|40|dilim:8
+salam|300|20|dilim:10
+sosis|260|50
+baklava|430|30|porsiyon:120,dilim:30,adet:30
+sütlaç|120|200
+kek|380|60|dilim:60
+kurabiye|480|20
+bisküvi|450|8
+çikolata|540|25|kare:6
+dondurma|210|70|top:50
+lokum|350|15
+helva|500|40|kaşık:20
+puding|120|150
+şekerli çay|20|100
+çay|1|100
+türk kahve|15|70
+latte,sütlü kahve|55|250
+cappuccino|40|200
+filtre kahve,americano,kahve|2|200
+light kola,zero,diyet kola|0|330
+kola,gazoz,fanta|42|330|bardak:200
+meyve suyu|45|200
+şeker|400|5|küp:4,kaşık:12,tatlı kaşığı:5,çay kaşığı:4
+maden suyu,soda,su|0|200
+protein tozu,protein|380|30|ölçek:30
+protein bar|350|50
+bira|43|500
+şarap|85|150
+smoothie|60|300
+kinoa|120|150|kaşık:25
+gözleme|250|200
+krep|220|100|adet:100
+waffle|300|120
+kumpir|125|400
+mısır|96|100|kaşık:15
+patlıcan|80|150
+kraker|430|30|adet:5
+cips|540|30|avuç:20
+patlamış mısır|380|25|kase:25
+salep|100|200|fincan:150
+falafel|330|100|adet:20
+makarna salata|150|200
+sushi|150|200|adet:30
+kruvasan|410|60
+`.trim().split('\n').map(line => {
+  const [keys, k, p, u] = line.split('|');
+  const units = {};
+  (u || '').split(',').filter(Boolean).forEach(x => { const [n, g] = x.split(':'); units[n] = +g; });
+  return {keys: keys.split(','), name: keys.split(',')[0], k: +k, p: +p, u: units};
+});
+// Genel birim → gram (yiyeceğe özel değer yoksa)
+const UNIT_G = {'yemek kaşığı': 15, 'kaşık': 15, 'tatlı kaşığı': 7, 'çay kaşığı': 3, 'su bardağı': 200, 'çay bardağı': 100, 'bardak': 200, 'fincan': 70, 'kupa': 250, 'kepçe': 120, 'avuç': 30, 'şişe': 500, 'kutu': 330, 'top': 50, 'ölçek': 30, 'küp': 4, 'kare': 6};
+const UNIT_RE = /(yemek kaşığı|tatlı kaşığı|çay kaşığı|su bardağı|çay bardağı|kaşık|bardak|fincan|kupa|kepçe|avuç|şişe|kutu|top|ölçek|küp|kare|adet|tane|dilim|porsiyon|tabak|kase|gram|gr|g|ml)(?=\s|$)/;
+const NUM_WORDS = {'yarım': .5, 'çeyrek': .25, 'bir': 1, 'iki': 2, 'üç': 3, 'dört': 4, 'beş': 5, 'altı': 6, 'yedi': 7, 'sekiz': 8, 'dokuz': 9, 'on': 10};
+function estimateMeal(text) {
+  const parts = String(text || '').toLocaleLowerCase('tr').split(/[,;\n+]|\s+ve\s+|\s+ile\s+/).map(x => x.trim()).filter(Boolean);
+  const items = [];
+  for (const raw of parts) {
+    let t = raw, qty = null;
+    let m = t.match(/^(\d+(?:[.,]\d+)?)(?:\s*[-–]\s*(\d+(?:[.,]\d+)?))?/);
+    if (m) { qty = num(m[1]); if (m[2]) qty = (qty + num(m[2])) / 2; t = t.slice(m[0].length).trim(); }
+    else if (/^½/.test(t)) { qty = .5; t = t.slice(1).trim(); }
+    else { m = t.match(/^(yarım|çeyrek|bir|iki|üç|dört|beş|altı|yedi|sekiz|dokuz|on)(?=\s|$)(\s+buçuk(?=\s|$))?/); if (m) { qty = NUM_WORDS[m[1]] + (m[2] ? .5 : 0); t = t.slice(m[0].length).trim(); } }
+    if (/^buçuk(?=\s|$)/.test(t)) { qty = (qty || 0) + .5; t = t.replace(/^buçuk\s*/, ''); }
+    m = t.match(/^(\d+)\s*x\b/) || t.match(/\bx\s*(\d+)$/); if (m) { qty = (qty || 1) * +m[1]; t = t.replace(m[0], '').trim(); }
+    const um = t.match(UNIT_RE); const unit = um && um.index <= 1 ? um[1] : null;
+    // Bir kalemde birden çok yiyecek olabilir ("kuru fasulye pilav"): en uzun eşleşmeden başlayarak hepsini bul
+    let rest = ' ' + t, kcal = null, first = true;
+    const seen = new Set();
+    for (let guard = 0; guard < 6; guard++) {
+      let food = null, key = '';
+      for (const f of FOOD_DB) for (const k of f.keys) if (k.length > key.length && rest.includes(' ' + k)) { food = f; key = k; }
+      if (!food) break;
+      const at = rest.indexOf(' ' + key), endSp = rest.indexOf(' ', at + 1 + key.length), end = endSp < 0 ? rest.length : endSp;
+      const fullWord = rest.slice(at + 1, end);
+      rest = rest.slice(0, at) + rest.slice(end);
+      if (seen.has(food)) continue;
+      seen.add(food);
+      if (/s[iıuü]z$/.test(fullWord)) continue; // "şekersiz", "yağsız"
+      const q = first ? (qty ?? 1) : 1, un = first ? unit : null;
+      let grams;
+      if (un === 'gram' || un === 'gr' || un === 'g' || un === 'ml') grams = q;
+      else if (un) grams = q * (food.u[un] ?? UNIT_G[un] ?? food.p);
+      else grams = q * (food.u.adet && first && qty != null ? food.u.adet : food.p);
+      kcal = (kcal || 0) + Math.round(food.k * grams / 100);
+      first = false;
+    }
+    items.push({label: raw, kcal});
+  }
+  const known = items.filter(i => i.kcal != null);
+  return {items, total: known.length ? known.reduce((a, i) => a + i.kcal, 0) : null};
+}
 
 /* ---------------- durum ---------------- */
 function defaultState() {
@@ -628,7 +846,7 @@ function renderToday() {
       ${MEALS.map(m => { const x = d.meals?.[m.id]; const on = x && (x.text || x.kcal); return `<button class="td-meal" data-act="meal" data-v="${m.id}">
         <i class="td-meal-dot ${on ? 'on' : ''}"></i>
         <div class="td-meal-b"><div class="td-meal-n">${m.n}</div><div class="td-meal-d">${on ? esc(x.text || 'Kaydedildi') : (S.settings.rem.meals[m.id] + ' · Eklemek için dokun')}</div></div>
-        <span class="td-meal-k ui-num">${on && x.kcal ? fmtInt(x.kcal) + ' kcal' : ''}</span>
+        <span class="td-meal-k ui-num">${on && x.kcal ? (x.est ? '~' : '') + fmtInt(x.kcal) + ' kcal' : ''}</span>
       </button>`; }).join('')}
     </section>`;
 
@@ -858,8 +1076,9 @@ function renderSheet() {
   if (sh.type === 'meal') {
     const m = MEALS.find(x => x.id === sh.id), x = peekDay(ui.day).meals?.[sh.id] || {};
     t = m.n;
-    body = `<div class="ui-field"><label class="ui-label" for="sh-text">Ne yedin?</label><textarea class="ui-ta" id="sh-text" placeholder="Örn: 2 haşlanmış yumurta, peynir, domates, salatalık, 1 dilim tam buğday ekmeği">${esc(x.text)}</textarea></div>
-      <div class="ui-field"><label class="ui-label" for="sh-kcal">Kalori (isteğe bağlı)</label><input class="ui-input" id="sh-kcal" inputmode="numeric" placeholder="kcal" value="${x.kcal || ''}"></div>`;
+    body = `<div class="ui-field"><label class="ui-label" for="sh-text">Ne yedin?</label><textarea class="ui-ta" id="sh-text" placeholder="Örn: 2 haşlanmış yumurta, 1 dilim beyaz peynir, domates, salatalık, 1 dilim tam buğday ekmeği">${esc(x.text)}</textarea></div>
+      <div id="sh-est">${mealEstHtml(estimateMeal(x.text))}</div>
+      <div class="ui-field"><div class="ml-kcal-h"><label class="ui-label" for="sh-kcal">Kalori</label><span class="ml-kcal-tag" id="sh-kcal-tag"></span></div><input class="ui-input" id="sh-kcal" inputmode="numeric" placeholder="kcal" value="${x.kcal || ''}"></div>`;
     foot = `${x.text || x.kcal ? '<button class="ui-btn danger" data-act="mealClear">Temizle</button>' : ''}<button class="ui-btn pri" data-act="mealSave">Kaydet</button>`;
   }
   if (sh.type === 'workout') {
@@ -908,6 +1127,19 @@ function renderSheet() {
   return `<div class="ui-sheet-bg" data-act="sheetBg"><div class="ui-sheet" role="dialog" aria-modal="true"><div class="ui-sheet-grip"></div>
     <div class="ui-sheet-h"><h2 class="ui-sheet-t">${t}</h2><button class="ui-iconbtn" data-act="closeSheet" aria-label="Kapat">${ico('close')}</button></div>
     ${body}<div class="ui-sheet-f">${foot}</div></div></div>`;
+}
+function mealEstHtml(E) {
+  if (!E.items.length) return `<p class="ml-est-note" style="margin:-4px 0 12px">Yazdıkça kalori tahmini burada görünür. Miktar ekleyebilirsin: “2 yumurta”, “1 dilim ekmek”, “3 kaşık pilav”, “150 g tavuk”.</p>`;
+  return `<div class="ml-est"><div class="ml-est-h"><span>Tahmini kalori</span><b class="ui-num">${E.total != null ? '~' + fmtInt(E.total) + ' kcal' : '–'}</b></div>
+    ${E.items.map(i => `<div class="ml-est-row ${i.kcal == null ? 'miss' : ''}"><span>${esc(i.label)}</span><span class="ui-num">${i.kcal == null ? 'tanınmadı' : fmtInt(i.kcal) + ' kcal'}</span></div>`).join('')}
+    <div class="ml-est-note">${E.items.some(i => i.kcal == null) ? 'Tanınmayanlar toplama eklenmedi; kaloriyi kendin düzeltebilirsin. ' : ''}Porsiyon ve tarife göre değişir.</div></div>`;
+}
+// Kalori alanı elle değiştirilmediyse tahmini değeri yazar
+function syncMealKcal() {
+  const E = estimateMeal($('#sh-text').value), inp = $('#sh-kcal'), tag = $('#sh-kcal-tag');
+  $('#sh-est').innerHTML = mealEstHtml(E);
+  if (!ui.sheet.manual) inp.value = E.total || '';
+  tag.innerHTML = ui.sheet.manual ? (E.total != null && +inp.value !== E.total ? `Elle girildi · <button class="ui-btn ghost sm" style="height:auto;padding:0" data-act="mealUseEst">Tahmini kullan</button>` : 'Elle girildi') : (E.total != null ? 'Tahmini · istersen değiştir' : '');
 }
 const openSheet = s => { ui.sheet = s; render(); setTimeout(() => $('.ui-sheet input:not([type=date]), .ui-sheet textarea')?.focus({preventScroll: true}), 60); };
 const closeSheet = () => { ui.sheet = null; render(); };
@@ -1016,8 +1248,9 @@ document.addEventListener('click', e => {
     case 'chip': el.parentElement.querySelectorAll('.ui-chip').forEach(c => c.setAttribute('aria-pressed', c === el)); break;
     case 'dayNav': { const n = addDays(ui.day, +v); if (n <= todayKey()) { ui.day = n; render(); } break; }
     case 'water': { const x = d(); x.water = Math.max(0, (x.water || 0) + (+v) * S.settings.glass); save(); render(); if (+v > 0 && x.water >= waterGoal() && x.water - S.settings.glass < waterGoal()) toast('Günlük su hedefini tamamladın'); break; }
-    case 'meal': openSheet({type: 'meal', id: v}); break;
-    case 'mealSave': { const text = $('#sh-text').value.trim(), kcal = Math.round(num($('#sh-kcal').value) || 0) || null; d().meals[ui.sheet.id] = {text, kcal}; save(); closeSheet(); break; }
+    case 'meal': { const x = peekDay(ui.day).meals?.[v]; openSheet({type: 'meal', id: v, manual: !!(x?.kcal && !x.est)}); syncMealKcal(); break; }
+    case 'mealUseEst': ui.sheet.manual = false; syncMealKcal(); break;
+    case 'mealSave': { const text = $('#sh-text').value.trim(), kcal = Math.round(num($('#sh-kcal').value) || 0) || null; d().meals[ui.sheet.id] = {text, kcal, est: !!kcal && !ui.sheet.manual}; save(); closeSheet(); break; }
     case 'mealClear': delete d().meals[ui.sheet.id]; save(); closeSheet(); break;
     case 'addWorkout': openSheet({type: 'workout', wtype: 'walk', min: 30}); break;
     case 'woType': ui.sheet.wtype = v; keepSheet(); break;
@@ -1106,6 +1339,8 @@ document.addEventListener('submit', e => {
 let noteT;
 document.addEventListener('input', e => {
   const t = e.target;
+  if (t.id === 'sh-text') syncMealKcal();
+  if (t.id === 'sh-kcal') { ui.sheet.manual = t.value.trim() !== ''; syncMealKcal(); }
   if (t.id === 'td-note') { clearTimeout(noteT); noteT = setTimeout(() => { day(ui.day).note = t.value; save(); const s = $('#td-saved'); if (s) s.textContent = 'Kaydedildi'; }, 400); }
   if (t.id === 'jr-why') { clearTimeout(noteT); noteT = setTimeout(() => { S.why = t.value.trim(); save(); const s = $('#jr-saved'); if (s) s.textContent = 'Kaydedildi'; }, 400); }
 });
