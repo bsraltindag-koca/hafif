@@ -193,8 +193,12 @@ svg{display:block}
 .td-check{width:22px;height:22px;border-radius:7px;border:1.6px solid color-mix(in srgb,var(--mind) 45%,var(--line));display:flex;align-items:center;justify-content:center;flex:none;color:#fff;transition:.15s}
 .td-habit[aria-pressed="true"] .td-check{background:var(--mind);border-color:var(--mind)}
 .td-habit[aria-pressed="true"] .td-habit-n{color:var(--ink2);text-decoration:line-through;text-decoration-color:var(--ink3)}
-.td-motive{background:linear-gradient(135deg,var(--mind-soft),var(--acc-soft));border-color:transparent;position:relative}
-.td-motive::before{content:"\201C";position:absolute;right:16px;top:-6px;font:600 84px/1 Georgia,serif;color:var(--mind);opacity:.18;pointer-events:none}
+.td-mot{display:flex;gap:10px;align-items:flex-start;padding:10px 14px;margin-bottom:12px;border-radius:14px;background:linear-gradient(135deg,var(--mind-soft),var(--acc-soft))}
+.td-mot>span{color:var(--mind);margin-top:2px}
+.td-mot-b{min-width:0;flex:1}
+.td-mot-q{font-size:var(--fs-btn);line-height:1.4;font-weight:500;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.td-mot-w{display:block;width:100%;text-align:left;font-size:var(--fs-label);color:var(--ink2);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.td-mot-w b{font-weight:600;color:var(--mind)}
 .td-quote{font-size:17px;line-height:1.45;font-weight:500;margin:0 0 6px;letter-spacing:-.005em}
 .td-why{margin-top:12px;padding-top:12px;border-top:1px solid color-mix(in srgb,var(--mind) 18%,transparent);font-size:var(--fs-sec);color:var(--ink2)}
 .td-why b{display:block;color:var(--ink);font-weight:500;font-size:var(--fs-body);margin-top:2px}
@@ -313,7 +317,7 @@ svg{display:block}
 <div id="app"></div>
 <script>
 'use strict';
-const APP_VERSION = '1.5';
+const APP_VERSION = '1.6';
 const STORE_KEY = 'hafif.v1';
 
 /* ---------------- yardımcılar ---------------- */
@@ -967,11 +971,10 @@ function renderToday() {
       ${S.habits.length ? S.habits.map(h => `<button class="td-habit" data-act="habit" data-v="${h.id}" aria-pressed="${!!d.habits?.[h.id]}"><span class="td-check">${d.habits?.[h.id] ? ico('check','sm') : ''}</span><span class="td-habit-n">${esc(h.n)}</span></button>`).join('') : '<p class="ui-empty-note">Ayarlardan disiplin maddesi ekleyebilirsin.</p>'}
     </section>`;
 
-  const motive = `<section class="ui-card td-motive">
-      <div class="ui-card-h"><h3 class="ui-card-t"><span style="color:var(--acc)">${ico('spark','sm')}</span>Günün motivasyonu</h3></div>
-      <p class="td-quote">${esc(q)}</p>
-      ${S.why ? `<div class="td-why">Neden başladım?<b>${esc(S.why)}</b></div>` : `<div class="td-why">“Neden başladım?” sorusunun cevabını yaz; zor anlarda burada görürsün. <button class="ui-btn ghost sm" data-act="tab" data-v="journal" style="padding:0">Yaz</button></div>`}
-    </section>`;
+  const motive = `<div class="td-mot"><span>${ico('spark','sm')}</span><div class="td-mot-b">
+      <div class="td-mot-q">${esc(q)}</div>
+      <button class="td-mot-w" data-act="tab" data-v="journal">${S.why ? `<b>Neden başladım:</b> ${esc(S.why)}` : '<b>Neden başladım?</b> Yaz, zor anlarda burada görürsün'}</button>
+    </div></div>`;
 
   const note = `<section class="ui-card">
       <div class="ui-card-h"><h3 class="ui-card-t"><span style="color:var(--mind)">${ico('journal','sm')}</span>Bugünün notu</h3></div>
@@ -987,7 +990,8 @@ function renderToday() {
       </div>
       ${st ? `<span class="td-streak">${ico('flame','sm')}${st} günlük seri</span>` : ''}
     </header>
-    <div class="ui-grid2"><div class="ui-col">${goalCard}${rings}${meals}${move}</div><div class="ui-col">${habits}${motive}${note}</div></div>`;
+    ${motive}
+    <div class="ui-grid2"><div class="ui-col">${goalCard}${rings}${meals}${move}</div><div class="ui-col">${habits}${note}</div></div>`;
 }
 
 /* ---- kilo ---- */
