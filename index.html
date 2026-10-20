@@ -317,7 +317,7 @@ svg{display:block}
 <div id="app"></div>
 <script>
 'use strict';
-const APP_VERSION = '1.6';
+const APP_VERSION = '1.7';
 const STORE_KEY = 'hafif.v1';
 
 /* ---------------- yardımcılar ---------------- */
@@ -849,7 +849,7 @@ setInterval(() => {
   const hit = reminderList().find(r => r.h === n.getHours() && r.m === n.getMinutes() && (r.wd == null || r.wd === n.getDay()));
   if (!hit) return;
   lastFired = stamp;
-  if ('Notification' in window && Notification.permission === 'granted') new Notification(hit.title, {body: hit.body});
+  if (notifPerm() === 'granted') try { new Notification(hit.title, {body: hit.body}); } catch { toast(`${hit.title}: ${hit.body}`); }
   else toast(`${hit.title}: ${hit.body}`);
 }, 20000);
 
@@ -864,6 +864,19 @@ function toast(t) {
 function applyTheme() { const pl = S.settings.palette; if (pl && pl !== 'mint') document.documentElement.setAttribute('data-palette', pl); else document.documentElement.removeAttribute('data-palette'); const t = S.settings.theme; if (t === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', t); }
 
 /* ---------------- çizim ---------------- */
+// Bildirim izni bazı tarayıcılarda/çerçevelerde okunurken hata verebilir
+function notifPerm() { try { return 'Notification' in window ? Notification.permission : 'unsupported'; } catch { return 'unsupported'; } }
+// Bir ekran çizilirken hata olursa sessizce donmak yerine nedenini göster
+function safePage(fn) {
+  try { return fn(); }
+  catch (e) {
+    console.error(e);
+    return `<section class="ui-card"><div class="ui-card-h"><h3 class="ui-card-t" style="color:var(--danger)">Bu ekran açılamadı</h3></div>
+      <p class="ui-empty-note" style="margin-bottom:10px">Kayıtların duruyor. Bu ekranın görüntüsünü paylaşırsan sorunu düzeltebilirim.</p>
+      <pre style="white-space:pre-wrap;font-size:12px;color:var(--ink2);background:var(--bg);padding:10px;border-radius:10px;margin:0 0 12px">${esc(String(e && e.message || e))}\n${esc(String(e && e.stack || '').split('\n').slice(0, 3).join('\n'))}</pre>
+      <button class="ui-btn" data-act="tab" data-v="today">Bugün'e dön</button></section>`;
+  }
+}
 function render() {
   applyTheme();
   const app = $('#app');
@@ -875,7 +888,7 @@ function render() {
       <div class="app-brand">${logo(28)}Hafif</div>
       ${tabs.map(([id, n, i]) => `<button class="app-tab" data-act="tab" data-v="${id}" ${ui.tab === id ? 'aria-current="page"' : ''}>${ico(i)}<span>${n}</span></button>`).join('')}
     </div></nav>
-    <main class="app-main">${({today: renderToday, weight: renderWeight, report: renderReport, journal: renderJournal, settings: renderSettings})[ui.tab]()}
+    <main class="app-main">${safePage(({today: renderToday, weight: renderWeight, report: renderReport, journal: renderJournal, settings: renderSettings})[ui.tab] || renderToday)}
       <div class="app-foot">Hafif v${APP_VERSION}</div>
     </main>
   </div>${ui.sheet ? renderSheet() : ''}`;
@@ -1188,7 +1201,7 @@ function renderJournal() {
 function renderSettings() {
   const p = S.profile, s = S.settings, r = s.rem;
   const sw = (key, on) => `<label class="ui-switch"><input type="checkbox" data-act="remToggle" data-v="${key}" ${on ? 'checked' : ''}><i></i></label>`;
-  const notifState = NATIVE ? 'iPhone bildirimleri olarak kurulur; uygulama kapalıyken de gelir.' : ('Notification' in window ? (Notification.permission === 'granted' ? 'Tarayıcı bildirimleri açık. Web sürümünde hatırlatmalar yalnızca sayfa açıkken gelir; iPhone uygulamasında uygulama kapalıyken de gelir.' : 'Web sürümünde hatırlatmalar yalnızca sayfa açıkken gelir; iPhone uygulamasında uygulama kapalıyken de gelir.') : 'Bu tarayıcı bildirim desteklemiyor.');
+  const notifState = NATIVE ? 'iPhone bildirimleri olarak kurulur; uygulama kapalıyken de gelir.' : (notifPerm() !== 'unsupported' ? (notifPerm() === 'granted' ? 'Tarayıcı bildirimleri açık. Web sürümünde hatırlatmalar yalnızca sayfa açıkken gelir; iPhone uygulamasında uygulama kapalıyken de gelir.' : 'Web sürümünde hatırlatmalar yalnızca sayfa açıkken gelir; iPhone uygulamasında uygulama kapalıyken de gelir.') : 'Bu tarayıcı bildirim desteklemiyor.');
   return `<header class="ui-head"><div><h1 class="ui-h1">Ayarlar</h1><p class="ui-sub">Hafif v${APP_VERSION}</p></div></header>
   <div class="ui-grid2"><div class="ui-col">
   <section class="ui-card"><div class="ui-card-h"><h3 class="ui-card-t">Profil ve hedef</h3><button class="ui-btn ghost sm" data-act="editProfile">Düzenle</button></div>
@@ -1205,7 +1218,7 @@ function renderSettings() {
     </div>
     <p class="st-note">Boş bırakılan su ve kalori hedefleri otomatik hesaplanır: su için kilo × 33 ml, kalori için günlük harcaman (${fmtInt(tdee())} kcal) eksi 500 kcal. Bu genel bir tahmindir; diyetisyeninin verdiği değeri girebilirsin.</p>
   </section>
-  <section class="ui-card"><div class="ui-card-h"><h3 class="ui-card-t"><span style="color:var(--acc)">${ico('bell','sm')}</span>Hatırlatmalar</h3>${!NATIVE && 'Notification' in window && Notification.permission !== 'granted' ? '<button class="ui-btn sm" data-act="askNotif">İzin ver</button>' : ''}</div>
+  <section class="ui-card"><div class="ui-card-h"><h3 class="ui-card-t"><span style="color:var(--acc)">${ico('bell','sm')}</span>Hatırlatmalar</h3>${!NATIVE && notifPerm() !== 'unsupported' && notifPerm() !== 'granted' ? '<button class="ui-btn sm" data-act="askNotif">İzin ver</button>' : ''}</div>
     <div class="st-row"><div class="st-row-b"><div class="st-row-n">Su</div><div class="st-row-d">${r.water.from}–${r.water.to} arası, ${r.water.every} saatte bir</div></div>${sw('water', r.water.on)}</div>
     ${r.water.on ? `<div class="st-times"><input class="ui-input" type="time" data-rem="water.from" value="${r.water.from}"><input class="ui-input" type="time" data-rem="water.to" value="${r.water.to}"></div><div class="ui-chips" style="margin-bottom:10px">${[1, 1.5, 2, 3].map(v => `<button class="ui-chip" data-act="waterEvery" data-v="${v}" aria-pressed="${r.water.every === v}">${fmt(v)} saatte bir</button>`).join('')}</div>` : ''}
     <div class="st-row"><div class="st-row-b"><div class="st-row-n">Öğün vakitleri</div><div class="st-row-d">${MEALS.map(m => r.meals[m.id]).join(' · ')}</div></div>${sw('meals', r.meals.on)}</div>
@@ -1626,7 +1639,7 @@ document.addEventListener('click', e => {
     }
     case 'remToggle': S.settings.rem[v].on = el.checked; save(); syncReminders(); render(); break;
     case 'waterEvery': S.settings.rem.water.every = +v; save(); syncReminders(); render(); break;
-    case 'askNotif': Notification.requestPermission().then(() => render()); break;
+    case 'askNotif': try { Promise.resolve(Notification.requestPermission()).then(() => render(), () => toast('Bildirim izni istenemedi')); } catch { toast('Bu ortamda bildirim izni istenemiyor'); } break;
     case 'delHabit': { const h = S.habits.find(x => x.id === v); confirmBox('Maddeyi sil', `“${esc(h.n)}” listeden çıkarılacak.`, 'Sil', () => { S.habits = S.habits.filter(x => x.id !== v); save(); }); break; }
     case 'theme': S.settings.theme = v; save(); render(); break;
     case 'palette': S.settings.palette = v; save(); render(); break;
@@ -1691,6 +1704,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && ui.sheet) 
 let lastToday = todayKey();
 setInterval(() => { const t = todayKey(); if (t !== lastToday) { if (ui.day === lastToday) ui.day = t; lastToday = t; if (!ui.sheet && document.activeElement?.tagName !== 'TEXTAREA') render(); } }, 60000);
 
+window.addEventListener('error', e => { try { toast('Bir hata oluştu: ' + (e.message || 'bilinmiyor')); } catch {} });
 load(); render();
 if (S.profile) { syncReminders(); if (S.settings.health) post({cmd: 'health', days: 120}); }
 </script>
