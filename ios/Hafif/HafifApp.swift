@@ -105,6 +105,7 @@ final class Bridge: NSObject, WKScriptMessageHandler {
             when.hour = h
             when.minute = m
             if let wd = item["wd"] as? Int { when.weekday = wd + 1 } // JS: 0 = Pazar, iOS: 1 = Pazar
+            if let mo = item["mo"] as? Int, let dy = item["dy"] as? Int { when.month = mo; when.day = dy } // yıllık (doğum günü)
             let trigger = UNCalendarNotificationTrigger(dateMatching: when, repeats: true)
             center.add(UNNotificationRequest(identifier: id, content: content, trigger: trigger))
         }

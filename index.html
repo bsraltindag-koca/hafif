@@ -161,6 +161,8 @@ svg{display:block}
 .ob-in{display:flex;align-items:center;height:52px;border:1.5px solid var(--line);border-radius:14px;background:var(--card);padding:0 14px;transition:border-color .15s,box-shadow .15s}
 .ob-in:focus-within{border-color:var(--acc);box-shadow:0 0 0 4px color-mix(in srgb,var(--acc) 14%,transparent)}
 .ob-in input{flex:1;min-width:0;width:100%;border:0;background:none;outline:none;font-size:18px;font-weight:500;height:100%}
+.ob-in input[type=date]{font-size:17px;-webkit-appearance:none;appearance:none;color:var(--ink)}
+.ob-in input::-webkit-date-and-time-value{text-align:left}
 .ob-in input::placeholder{color:var(--ink3);font-weight:400}
 .ob-in span{color:var(--ink2);font-size:var(--fs-btn);font-weight:500;margin-left:6px}
 .ob-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
@@ -256,6 +258,9 @@ svg{display:block}
 .td-habit[aria-pressed="true"] .td-habit-n{color:var(--ink2);text-decoration:line-through;text-decoration-color:var(--ink3)}
 .td-mot{display:flex;gap:10px;align-items:flex-start;padding:10px 14px;margin-bottom:12px;border-radius:14px;background:linear-gradient(135deg,var(--mind-soft),var(--acc-soft))}
 .td-mot>span{color:var(--mind);margin-top:2px}
+.td-mot.bday{background:var(--hero);color:#fff;box-shadow:0 8px 24px color-mix(in srgb,var(--p1) 25%,transparent)}
+.td-mot.bday>span,.td-mot.bday .td-mot-w,.td-mot.bday .td-mot-w b{color:#fff}
+.td-mot.bday .td-mot-q{-webkit-line-clamp:3}
 .td-mot-b{min-width:0;flex:1}
 .td-mot-q{font-size:var(--fs-btn);line-height:1.4;font-weight:500;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .td-mot-w{display:block;width:100%;text-align:left;font-size:var(--fs-label);color:var(--ink2);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -378,7 +383,7 @@ svg{display:block}
 <div id="app"></div>
 <script>
 'use strict';
-const APP_VERSION = '2.2';
+const APP_VERSION = '2.3';
 const STORE_KEY = 'hafif.v1';
 
 /* ---------------- yardımcılar ---------------- */
@@ -437,6 +442,7 @@ const IC = {
   steps:'<path d="M7 16c-1.5 0-3-1-3-4s1.5-6 3.5-6S10 8 10 10.5 8.5 16 7 16z"/><path d="M5 19.5a2 2 0 0 0 4 0V18H5z"/><path d="M17 12c1.5 0 3-1 3-4s-1.5-5-3.5-5S14 5 14 7.5 15.5 12 17 12z"/><path d="M19 15.5a2 2 0 0 1-4 0V14h4z"/>',
   camera:'<path d="M4 8h3l1.5-2.5h7L17 8h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/>',
   lock:'<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+  cake:'<path d="M4 21h16"/><path d="M5 21v-8a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v8"/><path d="M5 15c1.5 1 3 1 4.5 0s3-1 4.5 0 3 1 5 0"/><path d="M12 11V8"/><path d="M12 5.5c.8-.8.8-1.7 0-2.5-.8.8-.8 1.7 0 2.5z"/>',
   leaf:'<path d="M5 19c0-8 5-14 15-14 0 10-6 15-14 15"/><path d="M5 19c3-4 6-6 9-7.5"/>',
 };
 const ico = (n, cls = '') => `<svg class="ui-ico ${cls}" viewBox="0 0 24 24" aria-hidden="true">${IC[n]}</svg>`;
@@ -889,10 +895,30 @@ function waterGoal() {
   const kg = currentWeight() || 70;
   return Math.min(4000, Math.max(2000, Math.round(kg * 33 / 250) * 250));
 }
+// Doğum tarihi varsa yaş her gün ondan hesaplanır; eski kayıtlarda girilen yaş kullanılır
+function ageOf(p, onKey = todayKey()) {
+  if (!p?.birth) return p?.age;
+  const [by, bm, bd] = p.birth.split('-').map(Number), [y, m, d] = onKey.split('-').map(Number);
+  return y - by - (m < bm || (m === bm && d < bd) ? 1 : 0);
+}
+// 29 Şubat doğumlular artık yıl olmayan yıllarda 28 Şubat'ta kutlanır
+function birthdayMD(p, year) {
+  if (!p?.birth) return null;
+  let [, m, d] = p.birth.split('-').map(Number);
+  if (m === 2 && d === 29 && !(year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0))) d = 28;
+  return [m, d];
+}
+function isBirthday(k) { const [y, m, d] = k.split('-').map(Number), md = birthdayMD(S.profile, y); return !!md && md[0] === m && md[1] === d; }
+const BDAY_MSGS = [
+  n => `İyi ki doğdun, ${n}! Bugün kendine en iyi arkadaşın gibi davran; bir dilim pasta planını bozmaz.`,
+  n => `Doğum günün kutlu olsun, ${n}! Yeni yaşın sağlıkla, enerjiyle ve hafiflikle geçsin.`,
+  n => `Mutlu yıllar, ${n}! Bu yıl kendine verdiğin en güzel hediye, kendine iyi bakmak olsun.`,
+  n => `İyi ki varsın, ${n}! Geçen yıldan bu yana attığın her adım bugün seninle kutlanıyor.`,
+];
 function bmr() {
   const p = S.profile; if (!p) return 0;
   const kg = currentWeight();
-  return 10 * kg + 6.25 * p.height - 5 * p.age + (p.sex === 'm' ? 5 : -161);
+  return 10 * kg + 6.25 * p.height - 5 * ageOf(p) + (p.sex === 'm' ? 5 : -161);
 }
 const tdee = () => bmr() * (S.profile?.activity || 1.2);
 function kcalGoal() {
@@ -979,6 +1005,7 @@ function reminderList() {
   if (r.meals.on) MEALS.forEach(m => { const [h, mi] = r.meals[m.id].split(':').map(Number); out.push({id: 'meal-' + m.id, title: `${m.n} vakti`, body: `${m.n} öğününü yapıp uygulamaya kaydetmeyi unutma.`, h, m: mi}); });
   if (r.weigh.on) { const [h, m] = r.weigh.time.split(':').map(Number); out.push({id: 'weigh', title: 'Günaydın, tartı zamanı', body: 'Aç karnına tartıl; ölçüm uygulamaya gelsin.', h, m}); }
   if (r.note.on) { const [h, m] = r.note.time.split(':').map(Number); out.push({id: 'note', title: 'Günü kapat', body: 'Disiplin listeni işaretle ve bugünün notunu yaz.', h, m}); }
+  if (S.profile?.birth) { const md = birthdayMD(S.profile, new Date().getFullYear()); out.push({id: 'bday', title: `İyi ki doğdun, ${S.profile.name}!`, body: 'Bugün senin günün. Yeni yaşın sağlıkla, enerjiyle ve hafiflikle geçsin.', h: 9, m: 0, mo: md[0], dy: md[1]}); }
   if (r.measure.on) { const [h, m] = r.measure.time.split(':').map(Number); out.push({id: 'measure', title: 'Ölçü günü', body: 'Mezurayı al: bel, kalça ve diğer ölçülerini kaydet.', h, m, wd: r.measure.wd}); }
   return out;
 }
@@ -991,7 +1018,7 @@ setInterval(() => {
   if (NATIVE || !S?.profile) return;
   const n = new Date(), stamp = `${dkey(n)} ${n.getHours()}:${n.getMinutes()}`;
   if (stamp === lastFired) return;
-  const hit = reminderList().find(r => r.h === n.getHours() && r.m === n.getMinutes() && (r.wd == null || r.wd === n.getDay()));
+  const hit = reminderList().find(r => r.h === n.getHours() && r.m === n.getMinutes() && (r.wd == null || r.wd === n.getDay()) && (r.mo == null || (r.mo === n.getMonth() + 1 && r.dy === n.getDate())));
   if (!hit) return;
   lastFired = stamp;
   if (notifPerm() === 'granted') try { new Notification(hit.title, {body: hit.body}); } catch { toast(`${hit.title}: ${hit.body}`); }
@@ -1025,7 +1052,7 @@ function safePage(fn) {
 function render() {
   applyTheme();
   const app = $('#app');
-  if (!S.profile) { ui.ob ||= {step: 0, err: '', d: {name: '', sex: 'f', age: '', height: '', weight: '', goal: '', activity: 1.375}}; app.innerHTML = renderOnboarding(); return; }
+  if (!S.profile) { ui.ob ||= {step: 0, err: '', d: {name: '', sex: 'f', birth: '', height: '', weight: '', goal: '', activity: 1.375}}; app.innerHTML = renderOnboarding(); return; }
   const tabs = [['today','Bugün','today'],['weight','Kilo','scale'],['report','Rapor','report'],['journal','Günlük','journal'],['settings','Ayarlar','settings']];
   const scrollY = window.scrollY;
   app.innerHTML = `<div class="app-shell">
@@ -1054,7 +1081,7 @@ function renderOnboarding() {
   const dots = `<div class="ob-dots">${[1, 2].map(i => `<i class="${o.step >= i ? 'on' : ''}"></i>`).join('')}</div>`;
   const top = `<div class="ob-top"><button class="ui-iconbtn" data-act="obBack" aria-label="Geri">${ico('left')}</button>${dots}</div>`;
   const foot = (label, extra = '') => `<div class="ob-foot"><button class="ui-btn pri" type="submit">${label}</button>${extra}<div class="ob-ver">Hafif v${APP_VERSION}</div></div>`;
-  const field = (name, label, unit, mode, ph = '') => `<div class="ob-field"><label class="ui-label" for="ob-${name}">${label}</label><label class="ob-in"><input id="ob-${name}" data-ob="${name}" inputmode="${mode}" autocomplete="off" placeholder="${ph}" value="${esc(d[name])}">${unit ? `<span>${unit}</span>` : ''}</label></div>`;
+  const field = (name, label, unit, mode, ph = '', type = 'text', extra = '') => `<div class="ob-field"><label class="ui-label" for="ob-${name}">${label}</label><label class="ob-in"><input id="ob-${name}" data-ob="${name}" type="${type}" inputmode="${mode}" autocomplete="off" placeholder="${ph}" value="${esc(d[name])}" ${extra}>${unit ? `<span>${unit}</span>` : ''}</label></div>`;
   let body;
   if (o.step === 0) {
     body = `<div class="ob-hero"><div class="ob-mark">${logo(84)}</div><h1 class="ob-name">Hafif</h1><p class="ob-tag">Hafif adımlarla hedefine.</p></div>
@@ -1068,7 +1095,7 @@ function renderOnboarding() {
     body = `${top}<h1 class="ob-h">Seni tanıyalım</h1><p class="ob-sub">Kalori ve su ihtiyacını hesaplamak için.</p>
       ${field('name', 'Adın', '', 'text', 'Örn: Büşra')}
       <div class="ob-field"><span class="ui-label">Cinsiyet</span><div class="ob-pick">${[['f', 'Kadın'], ['m', 'Erkek']].map(([v, n]) => `<button type="button" class="ob-card" data-act="obSex" data-v="${v}" aria-pressed="${d.sex === v}">${n}</button>`).join('')}</div></div>
-      <div class="ob-row">${field('age', 'Yaş', 'yaş', 'numeric')}${field('height', 'Boy', 'cm', 'numeric')}</div>
+      <div class="ob-row">${field('birth', 'Doğum tarihin', '', 'numeric', '', 'date', `max="${todayKey()}" min="1920-01-01"`)}${field('height', 'Boy', 'cm', 'numeric')}</div>
       <div class="ob-err">${o.err || ''}</div>
       ${foot('Devam')}`;
   } else {
@@ -1092,9 +1119,10 @@ function obNext() {
   const o = ui.ob, d = o.d;
   o.err = '';
   if (o.step === 1) {
-    const a = num(d.age), h = num(d.height);
+    const a = d.birth ? ageOf({birth: d.birth}) : null, h = num(d.height);
     if (!d.name.trim()) o.err = 'Adını yazar mısın?';
-    else if (!a || a < 12 || a > 100) o.err = 'Yaşın 12 ile 100 arasında olmalı.';
+    else if (!d.birth) o.err = 'Doğum tarihini seç.';
+    else if (a == null || a < 12 || a > 100) o.err = 'Doğum tarihini kontrol eder misin? Uygulama 12 yaş ve üzeri için.';
     else if (!h || h < 100 || h > 250) o.err = 'Boyunu santimetre olarak gir (örn. 165).';
   }
   if (o.step === 2) {
@@ -1102,7 +1130,7 @@ function obNext() {
     if (!w || w < 25 || w > 350) o.err = 'Şu anki kilonu gir (örn. 82,5).';
     else if (!g || g < 25 || g > 350) o.err = 'Hedef kilonu gir.';
     if (!o.err) {
-      S.profile = {name: d.name.trim(), sex: d.sex, age: Math.round(num(d.age)), height: Math.round(num(d.height)), startWeight: w, goalWeight: g, activity: d.activity, startDate: todayKey()};
+      S.profile = {name: d.name.trim(), sex: d.sex, birth: d.birth, height: Math.round(num(d.height)), startWeight: w, goalWeight: g, activity: d.activity, startDate: todayKey()};
       S.weights.push({date: todayKey(), kg: w, fat: null, src: 'manual'});
       ui.ob = null; save(); syncReminders(); post({cmd: 'notifyPermission'}); render(); window.scrollTo(0, 0);
       return;
@@ -1172,7 +1200,11 @@ function renderToday() {
       ${S.habits.length ? S.habits.map(h => `<button class="td-habit" data-act="habit" data-v="${h.id}" aria-pressed="${!!d.habits?.[h.id]}"><span class="td-check">${d.habits?.[h.id] ? ico('check','sm') : ''}</span><span class="td-habit-n">${esc(h.n)}</span></button>`).join('') : '<p class="ui-empty-note">Ayarlardan disiplin maddesi ekleyebilirsin.</p>'}
     </section>`;
 
-  const motive = `<div class="td-mot"><span>${ico('spark','sm')}</span><div class="td-mot-b">
+  const bday = isBirthday(k);
+  const motive = bday ? `<div class="td-mot bday"><span>${ico('cake','sm')}</span><div class="td-mot-b">
+      <div class="td-mot-q">${esc(BDAY_MSGS[parseKey(k).getFullYear() % BDAY_MSGS.length](p.name))}</div>
+      <span class="td-mot-w"><b>${parseKey(k).getFullYear() - +p.birth.slice(0, 4)}. yaşın</b> sağlıkla gelsin</span>
+    </div></div>` : `<div class="td-mot"><span>${ico('spark','sm')}</span><div class="td-mot-b">
       <div class="td-mot-q">${esc(q)}</div>
       <button class="td-mot-w" data-act="tab" data-v="journal">${S.why ? `<b>Neden başladım:</b> ${esc(S.why)}` : '<b>Neden başladım?</b> Yaz, zor anlarda burada görürsün'}</button>
     </div></div>`;
@@ -1426,8 +1458,9 @@ function renderSettings() {
   <div class="ui-grid2"><div class="ui-col">
   <section class="ui-card"><div class="ui-card-h"><h3 class="ui-card-t">Profil ve hedef</h3><button class="ui-btn ghost sm" data-act="editProfile">Düzenle</button></div>
     <div class="st-row" style="gap:14px;justify-content:flex-start">${avatar('lg')}<div class="st-row-b"><div class="ui-row" style="gap:4px"><button class="ui-btn sm" data-act="avatarSet">${ico('camera','sm')}${p.photo ? 'Değiştir' : 'Profil fotoğrafı ekle'}</button>${p.photo ? '<button class="ui-btn ghost sm danger" data-act="avatarDel">Kaldır</button>' : ''}</div></div></div>
-    <div class="st-row"><div class="st-row-b"><div class="st-row-n">${esc(p.name)}</div><div class="st-row-d">${p.sex === 'm' ? 'Erkek' : 'Kadın'} · ${p.age} yaş · ${p.height} cm · ${ACTIVITY.find(a => a.v === p.activity)?.n || ''} hareket</div></div></div>
+    <div class="st-row"><div class="st-row-b"><div class="st-row-n">${esc(p.name)}</div><div class="st-row-d">${p.sex === 'm' ? 'Erkek' : 'Kadın'} · ${ageOf(p)} yaş${p.birth ? ` (${shortDate(p.birth)})` : ''} · ${p.height} cm · ${ACTIVITY.find(a => a.v === p.activity)?.n || ''} hareket</div></div></div>
     <div class="st-row"><div class="st-row-b"><div class="st-row-n">Başlangıç ${fmt(p.startWeight)} kg → hedef ${fmt(p.goalWeight)} kg</div><div class="st-row-d">${shortDate(p.startDate)} tarihinde başladın</div></div></div>
+    ${p.birth ? '' : `<p class="st-note">${ico('cake','sm')} Doğum tarihini eklersen yaşın her yıl kendiliğinden güncellenir, doğum gününde de seni küçük bir sürprizle karşılarız. <button class="ui-btn ghost sm" data-act="editProfile" style="padding:0;height:auto">Ekle</button></p>`}
   </section>
   <section class="ui-card"><div class="ui-card-h"><h3 class="ui-card-t">Günlük hedefler</h3></div>
     <div class="ui-fields2">
@@ -1541,7 +1574,7 @@ function renderSheet() {
     t = 'Profil ve hedef';
     body = `<div class="ui-field"><label class="ui-label" for="pf-name">Ad</label><input class="ui-input" id="pf-name" value="${esc(p.name)}" maxlength="24"></div>
       <div class="ui-fields2">
-        <div class="ui-field"><label class="ui-label" for="pf-age">Yaş</label><input class="ui-input" id="pf-age" inputmode="numeric" value="${p.age}"></div>
+        <div class="ui-field"><label class="ui-label" for="pf-birth">Doğum tarihi</label><input class="ui-input" id="pf-birth" type="date" max="${todayKey()}" min="1920-01-01" value="${p.birth || ''}"></div>
         <div class="ui-field"><label class="ui-label" for="pf-h">Boy (cm)</label><input class="ui-input" id="pf-h" inputmode="numeric" value="${p.height}"></div>
         <div class="ui-field"><label class="ui-label" for="pf-s">Başlangıç kilosu</label><input class="ui-input" id="pf-s" inputmode="decimal" value="${fmt(p.startWeight)}"></div>
         <div class="ui-field"><label class="ui-label" for="pf-g">Hedef kilo</label><input class="ui-input" id="pf-g" inputmode="decimal" value="${fmt(p.goalWeight)}"></div>
@@ -1906,9 +1939,10 @@ document.addEventListener('click', e => {
     case 'shareReport': navigator.share({title: 'Haftalık rapor', text: reportText(weekData(ui.week))}).catch(() => {}); break;
     case 'editProfile': openSheet({type: 'profile'}); break;
     case 'profileSave': {
-      const p = S.profile, a = num($('#pf-age').value), h = num($('#pf-h').value), sw = num($('#pf-s').value), g = num($('#pf-g').value);
-      if (!a || !h || !sw || !g) { toast('Tüm alanları doldur'); return; }
-      Object.assign(p, {name: $('#pf-name').value.trim() || p.name, age: Math.round(a), height: Math.round(h), startWeight: sw, goalWeight: g, sex: chipVal('sex'), activity: +chipVal('activity')});
+      const p = S.profile, birth = $('#pf-birth').value || p.birth, a = birth ? ageOf({birth}) : p.age, h = num($('#pf-h').value), sw = num($('#pf-s').value), g = num($('#pf-g').value);
+      if (!a || !h || !sw || !g) { toast(birth || p.age ? 'Tüm alanları doldur' : 'Doğum tarihini seç'); return; }
+      if (a < 12 || a > 100) { toast('Doğum tarihini kontrol et'); return; }
+      Object.assign(p, {name: $('#pf-name').value.trim() || p.name, ...(birth ? {birth} : {}), height: Math.round(h), startWeight: sw, goalWeight: g, sex: chipVal('sex'), activity: +chipVal('activity')});
       save(); syncReminders(); closeSheet(); break;
     }
     case 'remToggle': S.settings.rem[v].on = el.checked; save(); syncReminders(); render(); break;
@@ -1966,6 +2000,7 @@ document.addEventListener('input', e => {
 });
 document.addEventListener('change', e => {
   const t = e.target;
+  if (t.dataset.ob && ui.ob) ui.ob.d[t.dataset.ob] = t.value;
   if (t.id === 'ms-date' && ui.sheet?.type === 'measure' && t.value) { ui.sheet.date = t.value; keepSheet(); return; }
   if (t.dataset.csv && ui.sheet?.type === 'csv') { ui.sheet.map[t.dataset.csv] = t.dataset.csv === 'dayFirst' ? t.value === '1' : +t.value; keepSheet(); return; }
   if (t.dataset.set) { const n = num(t.value); const k = t.dataset.set; S.settings[k] = n && n > 0 ? Math.round(n) : (['waterGoal', 'kcalGoal'].includes(k) ? null : S.settings[k]); if (k === 'glass' && !(n > 0)) S.settings.glass = 250; save(); syncReminders(); render(); }
