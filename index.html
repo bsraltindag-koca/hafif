@@ -217,6 +217,28 @@ svg{display:block}
 .ml-kcal-tag{font-size:var(--fs-label);color:var(--ink2)}
 
 /* ---------- kilo ---------- */
+.wt-seg{display:inline-flex;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:3px;margin:-4px 0 14px}
+.wt-seg button{height:32px;padding:0 18px;border-radius:999px;font-size:var(--fs-sec);font-weight:500;color:var(--ink2)}
+.wt-seg button[aria-pressed="true"]{background:var(--hero);color:#fff;font-weight:600}
+.ms-total{display:flex;align-items:baseline;gap:6px;font-size:34px;font-weight:600;letter-spacing:-.02em;line-height:1.1}
+.ms-total small{font-size:var(--fs-sec);font-weight:400;color:rgba(255,255,255,.85);letter-spacing:0}
+.ms-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ms-tile{padding:10px 12px;border-radius:14px;background:var(--bg);display:flex;flex-direction:column;gap:1px;text-align:left}
+.ms-tile span{color:var(--ink2);font-size:var(--fs-sec)}
+.ms-tile b{font-size:19px;font-weight:600;letter-spacing:-.01em}
+.ms-tile b small{font-size:var(--fs-sec);font-weight:400;color:var(--ink2);margin-left:2px}
+.ms-tile i{font-style:normal;font-size:var(--fs-label);font-weight:600}
+.ms-tile i.down{color:var(--acc)}.ms-tile i.up{color:var(--move)}.ms-tile i.same{color:var(--ink3)}
+.ms-ratio{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.ms-ratio:first-of-type{border-top:0;padding-top:0}
+.ms-ratio-b{flex:1;min-width:0}
+.ms-ratio-n{font-weight:500}
+.ms-ratio-d{color:var(--ink2);font-size:var(--fs-sec)}
+.ms-ratio-v{font-weight:600;font-size:17px}
+.ms-dot{width:10px;height:10px;border-radius:50%;flex:none}
+.ms-hint{display:block;color:var(--ink3);font-size:var(--fs-label);margin:-2px 0 6px;line-height:1.3}
+.ms-fields{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px}
+@media (min-width:900px){.ms-grid{grid-template-columns:repeat(4,1fr)}}
 .wt-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .wt-stat{padding:2px 0}
 .wt-stat b{display:block;font-size:22px;font-weight:600;letter-spacing:-.01em}
@@ -291,7 +313,7 @@ svg{display:block}
 <div id="app"></div>
 <script>
 'use strict';
-const APP_VERSION = '1.4';
+const APP_VERSION = '1.5';
 const STORE_KEY = 'hafif.v1';
 
 /* ---------------- yardımcılar ---------------- */
@@ -378,6 +400,16 @@ const WORKOUTS = [
   {id:'swim',  n:'Yüzme',            met:6},
   {id:'dance', n:'Dans',             met:5},
   {id:'other', n:'Diğer',            met:4},
+];
+const MEASURES = [
+  {id: 'neck',  n: 'Boyun',  d: 'Âdemelmasının hemen altı'},
+  {id: 'chest', n: 'Göğüs',  d: 'Göğüs ucu hizası, nefes verirken'},
+  {id: 'waist', n: 'Bel',    d: 'En ince yer, göbeğin biraz üstü'},
+  {id: 'belly', n: 'Karın',  d: 'Göbek deliği hizası'},
+  {id: 'hip',   n: 'Kalça',  d: 'Kalçanın en geniş yeri'},
+  {id: 'arm',   n: 'Kol',    d: 'Üst kolun en kalın yeri'},
+  {id: 'thigh', n: 'Uyluk',  d: 'Bacağın üst kısmında en kalın yer'},
+  {id: 'calf',  n: 'Baldır', d: 'Baldırın en kalın yeri'},
 ];
 const ACTIVITY = [
   {v:1.2,   n:'Hareketsiz',  d:'Masa başı, egzersiz yok'},
@@ -677,10 +709,12 @@ function defaultState() {
         meals: {on: true, breakfast: '08:30', lunch: '12:30', snack: '16:00', dinner: '19:00'},
         weigh: {on: true, time: '08:00'},
         note:  {on: true, time: '21:30'},
+        measure: {on: true, wd: 0, time: '09:00'},
       },
     },
     days: {},
     weights: [],
+    measures: [],
   };
 }
 let S;
@@ -689,7 +723,9 @@ function load() {
   const d = defaultState();
   S.settings = Object.assign(d.settings, S.settings || {});
   S.settings.rem = Object.assign(d.settings.rem, S.settings.rem || {});
-  S.days ||= {}; S.weights ||= []; S.habits ||= d.habits;
+  S.days ||= {}; S.weights ||= []; S.habits ||= d.habits; S.measures ||= [];
+  // v1.5 öncesi tartıya girilen bel ölçüsünü ölçüler listesine taşı
+  S.weights.forEach(w => { if (w.waist) { const m = S.measures.find(x => x.date === w.date); if (m) m.waist ??= w.waist; else S.measures.push({date: w.date, waist: w.waist}); } delete w.waist; });
 }
 function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch {} }
 const day = k => (S.days[k] ||= {water: 0, meals: {}, workouts: [], habits: {}, mood: null, note: '', steps: null});
@@ -750,6 +786,14 @@ function trend() {
   return de ? nu / de : null;
 }
 
+const sortedMeasures = () => [...S.measures].sort((a, b) => a.date.localeCompare(b.date));
+// Her ölçü için ilk ve son değer
+function measureEnds(upTo) {
+  const out = {};
+  for (const m of sortedMeasures()) { if (upTo && m.date > upTo) break; for (const k of MEASURES) if (m[k.id] != null) { out[k.id] ||= {first: m[k.id], firstDate: m.date}; Object.assign(out[k.id], {last: m[k.id], lastDate: m.date}); } }
+  return out;
+}
+
 /* ---------------- native köprü (iPhone uygulaması) ---------------- */
 const NATIVE = !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.hafif);
 const post = msg => { if (NATIVE) window.webkit.messageHandlers.hafif.postMessage(msg); };
@@ -786,6 +830,7 @@ function reminderList() {
   if (r.meals.on) MEALS.forEach(m => { const [h, mi] = r.meals[m.id].split(':').map(Number); out.push({id: 'meal-' + m.id, title: `${m.n} vakti`, body: `${m.n} öğününü yapıp uygulamaya kaydetmeyi unutma.`, h, m: mi}); });
   if (r.weigh.on) { const [h, m] = r.weigh.time.split(':').map(Number); out.push({id: 'weigh', title: 'Günaydın, tartı zamanı', body: 'Aç karnına tartıl; ölçüm uygulamaya gelsin.', h, m}); }
   if (r.note.on) { const [h, m] = r.note.time.split(':').map(Number); out.push({id: 'note', title: 'Günü kapat', body: 'Disiplin listeni işaretle ve bugünün notunu yaz.', h, m}); }
+  if (r.measure.on) { const [h, m] = r.measure.time.split(':').map(Number); out.push({id: 'measure', title: 'Ölçü günü', body: 'Mezurayı al: bel, kalça ve diğer ölçülerini kaydet.', h, m, wd: r.measure.wd}); }
   return out;
 }
 function syncReminders() {
@@ -797,7 +842,7 @@ setInterval(() => {
   if (NATIVE || !S?.profile) return;
   const n = new Date(), stamp = `${dkey(n)} ${n.getHours()}:${n.getMinutes()}`;
   if (stamp === lastFired) return;
-  const hit = reminderList().find(r => r.h === n.getHours() && r.m === n.getMinutes());
+  const hit = reminderList().find(r => r.h === n.getHours() && r.m === n.getMinutes() && (r.wd == null || r.wd === n.getDay()));
   if (!hit) return;
   lastFired = stamp;
   if ('Notification' in window && Notification.permission === 'granted') new Notification(hit.title, {body: hit.body});
@@ -805,7 +850,7 @@ setInterval(() => {
 }, 20000);
 
 /* ---------------- arayüz durumu ---------------- */
-const ui = {tab: 'today', day: todayKey(), week: weekStart(todayKey()), range: 90, sheet: null};
+const ui = {tab: 'today', day: todayKey(), week: weekStart(todayKey()), range: 90, sheet: null, wtView: 'weight', mKey: 'waist'};
 let toastTimer;
 function toast(t) {
   document.querySelector('.ui-toast')?.remove();
@@ -947,6 +992,8 @@ function renderToday() {
 
 /* ---- kilo ---- */
 function renderWeight() {
+  const seg = `<div class="wt-seg">${[['weight','Tartı'],['measure','Ölçüler']].map(([v, n]) => `<button data-act="wtView" data-v="${v}" aria-pressed="${ui.wtView === v}">${n}</button>`).join('')}</div>`;
+  if (ui.wtView === 'measure') return renderMeasures(seg);
   const ws = sortedWeights(), p = S.profile, cw = currentWeight(), b = bmi(cw);
   const last = ws[ws.length - 1];
   const tr = trend();
@@ -957,12 +1004,13 @@ function renderWeight() {
   else { const days = Math.ceil((cw - p.goalWeight) / -tr); const dt = new Date(); dt.setDate(dt.getDate() + days); pred = `Haftada ortalama <b>${fmt(-tr * 7, 2)} kg</b> veriyorsun. Bu hızla hedefe <b>${dt.getDate()} ${MONTHS[dt.getMonth()]} ${dt.getFullYear()}</b> civarı ulaşırsın.`; }
   return `<header class="ui-head"><div><h1 class="ui-h1">Kilo</h1><p class="ui-sub">${last ? `Son tartı: ${longDate(last.date)}` : 'Henüz tartı yok'}</p></div>
       <div class="ui-row">${NATIVE ? `<button class="ui-btn" data-act="healthSync">${ico('sync','sm')}Tartıdan al</button>` : ''}<button class="ui-btn pri" data-act="addWeight">${ico('plus','sm')}Ekle</button></div></header>
+    ${seg}
     <div class="ui-grid2"><div class="ui-col">
     <section class="ui-card"><div class="wt-stats">
       <div class="wt-stat"><b class="ui-num">${fmt(cw)}</b><span>Güncel kg</span></div>
       <div class="wt-stat"><b class="ui-num" style="color:${p.startWeight - cw >= 0 ? 'var(--acc)' : 'var(--move)'}">${p.startWeight - cw > 0 ? '−' : p.startWeight - cw < 0 ? '+' : ''}${fmt(Math.abs(p.startWeight - cw))}</b><span>Toplam kg</span></div>
       <div class="wt-stat"><b class="ui-num">${fmt(b)}</b><span>VKİ · ${bmiLabel(b)}</span></div>
-    </div>${last?.fat != null ? `<hr class="ui-hr"><div class="wt-stats"><div class="wt-stat"><b class="ui-num">%${fmt(last.fat)}</b><span>Yağ oranı</span></div>${last.waist ? `<div class="wt-stat"><b class="ui-num">${fmt(last.waist)}</b><span>Bel (cm)</span></div>` : ''}</div>` : last?.waist ? `<hr class="ui-hr"><div class="wt-stats"><div class="wt-stat"><b class="ui-num">${fmt(last.waist)}</b><span>Bel (cm)</span></div></div>` : ''}</section>
+    </div>${last?.fat != null ? `<hr class="ui-hr"><div class="wt-stats"><div class="wt-stat"><b class="ui-num">%${fmt(last.fat)}</b><span>Yağ oranı</span></div></div>` : ''}</section>
     <section class="ui-card">
       <div class="ui-card-h"><h3 class="ui-card-t">Gidişat</h3><div class="ui-chips">${[[30,'1 ay'],[90,'3 ay'],[0,'Tümü']].map(([v, n]) => `<button class="ui-chip" data-act="range" data-v="${v}" aria-pressed="${ui.range === v}">${n}</button>`).join('')}</div></div>
       <div class="wt-chart" id="wt-chart"></div>
@@ -971,7 +1019,57 @@ function renderWeight() {
     ${NATIVE ? '' : `<section class="ui-card"><div class="ui-card-h"><h3 class="ui-card-t">${ico('scale','sm')}Akıllı tartı</h3></div><p class="ui-empty-note" style="margin-bottom:10px">Tartının uygulamasından (Zepp Life, Renpho, Huawei Sağlık, Withings vb.) dışa aktardığın CSV dosyasını yükle; tarih, kilo ve yağ oranı sütunları otomatik bulunur. iPhone uygulamasında tartı verisi Apple Sağlık üzerinden kendiliğinden gelir.</p><button class="ui-btn" data-act="csv">${ico('upload','sm')}CSV yükle</button></section>`}
     </div><div class="ui-col">
     <section class="ui-card"><div class="ui-card-h"><h3 class="ui-card-t">Geçmiş</h3><span class="ui-card-meta">${ws.length} tartım</span></div>
-      ${ws.length ? ws.slice().reverse().slice(0, 60).map((w, i, arr) => { const prev = arr[i + 1]; const dl = prev ? w.kg - prev.kg : null; return `<div class="wt-item"><div class="wt-item-b"><div><span class="wt-item-kg ui-num">${fmt(w.kg)} kg</span>${w.src === 'health' ? '<span class="wt-src">TARTI</span>' : w.src === 'csv' ? '<span class="wt-src">CSV</span>' : ''}</div><div class="wt-item-d ui-num">${longDate(w.date)}${w.fat != null ? ` · yağ %${fmt(w.fat)}` : ''}${w.waist ? ` · bel ${fmt(w.waist)} cm` : ''}</div></div>${dl != null && Math.abs(dl) >= .05 ? `<span class="wt-delta ui-num ${dl < 0 ? 'down' : 'up'}">${dl < 0 ? '−' : '+'}${fmt(Math.abs(dl))}</span>` : ''}<button class="ui-iconbtn" data-act="delWeight" data-v="${w.date}" aria-label="Sil">${ico('trash','sm')}</button></div>`; }).join('') : '<p class="ui-empty-note">İlk tartını ekle.</p>'}
+      ${ws.length ? ws.slice().reverse().slice(0, 60).map((w, i, arr) => { const prev = arr[i + 1]; const dl = prev ? w.kg - prev.kg : null; return `<div class="wt-item"><div class="wt-item-b"><div><span class="wt-item-kg ui-num">${fmt(w.kg)} kg</span>${w.src === 'health' ? '<span class="wt-src">TARTI</span>' : w.src === 'csv' ? '<span class="wt-src">CSV</span>' : ''}</div><div class="wt-item-d ui-num">${longDate(w.date)}${w.fat != null ? ` · yağ %${fmt(w.fat)}` : ''}</div></div>${dl != null && Math.abs(dl) >= .05 ? `<span class="wt-delta ui-num ${dl < 0 ? 'down' : 'up'}">${dl < 0 ? '−' : '+'}${fmt(Math.abs(dl))}</span>` : ''}<button class="ui-iconbtn" data-act="delWeight" data-v="${w.date}" aria-label="Sil">${ico('trash','sm')}</button></div>`; }).join('') : '<p class="ui-empty-note">İlk tartını ekle.</p>'}
+    </section></div></div>`;
+}
+
+/* ---- ölçüler ---- */
+function ratioRows() {
+  const E = measureEnds(), p = S.profile, f = p.sex !== 'm', rows = [];
+  const waist = E.waist?.last, hip = E.hip?.last;
+  const tone = lvl => ['var(--acc)', 'var(--meal)', 'var(--move)'][lvl];
+  if (waist && hip) {
+    const r = waist / hip, lvl = f ? (r <= .8 ? 0 : r <= .85 ? 1 : 2) : (r <= .95 ? 0 : r <= 1 ? 1 : 2);
+    rows.push({n: 'Bel / kalça oranı', v: fmt(r, 2), lvl, d: ['Düşük risk', 'Orta risk', 'Yüksek risk'][lvl] + ` · ${f ? 'kadınlarda 0,85' : 'erkeklerde 1,0'} altı önerilir`});
+  }
+  if (waist && p.height) {
+    const r = waist / p.height, lvl = r < .5 ? 0 : r < .6 ? 1 : 2;
+    rows.push({n: 'Bel / boy oranı', v: fmt(r, 2), lvl, d: ['Sağlıklı aralık', 'Dikkat', 'Yüksek risk'][lvl] + ' · 0,5 altı önerilir'});
+  }
+  if (waist) {
+    const lim = f ? 80 : 94, lvl = waist < lim ? 0 : waist < (f ? 88 : 102) ? 1 : 2;
+    rows.push({n: 'Bel çevresi', v: `${fmt(waist)} cm`, lvl, d: lvl === 0 ? 'Önerilen sınırın altında' : `${f ? 'Kadınlarda' : 'Erkeklerde'} ${lim} cm altı önerilir · ${fmt(waist - lim)} cm kaldı`});
+  }
+  return rows.map(r => ({...r, c: tone(r.lvl)}));
+}
+function renderMeasures(seg) {
+  const ms = sortedMeasures(), E = measureEnds(), last = ms[ms.length - 1];
+  const keys = MEASURES.filter(k => E[k.id]);
+  if (!keys.some(k => k.id === ui.mKey) && keys.length) ui.mKey = keys[0].id;
+  const lost = keys.reduce((a, k) => a + (E[k.id].first - E[k.id].last), 0);
+  const ratios = ratioRows();
+  const head = `<header class="ui-head"><div><h1 class="ui-h1">Kilo</h1><p class="ui-sub">${last ? `Son ölçüm: ${longDate(last.date)}` : 'Henüz ölçü yok'}</p></div>
+      <div class="ui-row"><button class="ui-btn pri" data-act="addMeasure">${ico('plus','sm')}Ölçü ekle</button></div></header>${seg}`;
+  if (!ms.length) return head + `<section class="ui-card"><div class="ui-card-h"><h3 class="ui-card-t"><span style="color:var(--acc)">${ico('target','sm')}</span>Beden ölçülerini takip et</h3></div>
+      <p class="ui-empty-note" style="margin-bottom:12px">Tartı bazen yerinde sayar ama santimler gider. Haftada bir, sabah aç karnına ve mezurayı sıkmadan ölçmen yeterli. İstediğin ölçüleri gir; hepsi isteğe bağlı.</p>
+      ${MEASURES.map(k => `<div class="ms-ratio"><div class="ms-ratio-b"><div class="ms-ratio-n">${k.n}</div><div class="ms-ratio-d">${k.d}</div></div></div>`).join('')}
+      <div class="ui-row" style="margin-top:12px"><button class="ui-btn pri" data-act="addMeasure">${ico('plus','sm')}İlk ölçümü ekle</button></div></section>`;
+  const tiles = keys.map(k => { const e = E[k.id], dl = e.last - e.first; return `<button class="ms-tile" data-act="mKey" data-v="${k.id}"><span>${k.n}</span><b class="ui-num">${fmt(e.last)}<small>cm</small></b><i class="${e.firstDate === e.lastDate ? 'same' : dl < 0 ? 'down' : dl > 0 ? 'up' : 'same'} ui-num">${e.firstDate === e.lastDate ? 'İlk ölçüm' : dl === 0 ? 'Değişmedi' : (dl < 0 ? '−' : '+') + fmt(Math.abs(dl)) + ' cm'}</i></button>`; }).join('');
+  const firstDate = ms[0].date;
+  return head + `<div class="ui-grid2"><div class="ui-col">
+    <section class="ui-card td-hero"><span class="ui-label">${lost > 0 ? 'Toplam verilen' : 'Toplam değişim'}</span>
+      <div class="ms-total ui-num">${lost > 0 ? '−' : lost < 0 ? '+' : ''}${fmt(Math.abs(lost))}<small>cm</small></div>
+      <div class="td-goal-row"><span>${ms.length > 1 ? `${shortDate(firstDate)} tarihinden bu yana, ${keys.length} bölge` : 'İlk ölçümün kaydedildi; değişim sonraki ölçümde görünür'}</span></div></section>
+    <section class="ui-card"><div class="ui-card-h"><h3 class="ui-card-t">Güncel ölçüler</h3><span class="ui-card-meta">İlk ölçüme göre</span></div><div class="ms-grid">${tiles}</div></section>
+    ${ratios.length ? `<section class="ui-card"><div class="ui-card-h"><h3 class="ui-card-t"><span style="color:var(--acc)">${ico('target','sm')}</span>Sağlık göstergeleri</h3></div>
+      ${ratios.map(r => `<div class="ms-ratio"><i class="ms-dot" style="background:${r.c}"></i><div class="ms-ratio-b"><div class="ms-ratio-n">${r.n}</div><div class="ms-ratio-d">${r.d}</div></div><span class="ms-ratio-v ui-num" style="color:${r.c}">${r.v}</span></div>`).join('')}
+      <p class="ui-empty-note" style="margin-top:8px">Genel tarama eşikleridir (DSÖ / IDF); tanı yerine geçmez.</p></section>` : ''}
+    </div><div class="ui-col">
+    <section class="ui-card"><div class="ui-card-h"><h3 class="ui-card-t">Gidişat</h3></div>
+      <div class="ui-chips" style="margin-bottom:6px">${keys.map(k => `<button class="ui-chip" data-act="mKey" data-v="${k.id}" aria-pressed="${ui.mKey === k.id}">${k.n}</button>`).join('')}</div>
+      <div class="wt-chart" id="ms-chart"></div></section>
+    <section class="ui-card"><div class="ui-card-h"><h3 class="ui-card-t">Geçmiş</h3><span class="ui-card-meta">${ms.length} ölçüm</span></div>
+      ${ms.slice().reverse().map(m => `<div class="wt-item"><button class="wt-item-b" data-act="editMeasure" data-v="${m.date}" style="text-align:left"><div class="wt-item-kg">${longDate(m.date)}</div><div class="wt-item-d ui-num">${MEASURES.filter(k => m[k.id] != null).map(k => `${k.n} ${fmt(m[k.id])}`).join(' · ')}</div></button><button class="ui-iconbtn" data-act="delMeasure" data-v="${m.date}" aria-label="Sil">${ico('trash','sm')}</button></div>`).join('')}
     </section></div></div>`;
 }
 
@@ -1004,6 +1102,7 @@ function weekData(ws) {
     moodAvg: (() => { const m = past.filter(x => x.d.mood); return m.length ? m.reduce((s, x) => s + x.d.mood, 0) / m.length : null; })(),
     wDelta: startW != null && endW != null && (inWeek.length > 1 || wBefore) ? endW - startW : null,
     endW, wg,
+    ...(() => { const b = measureEnds(addDays(ws, -1)).waist, e = measureEnds(keys[6]).waist; const inWk = S.measures.some(m => m.date >= keys[0] && m.date <= keys[6] && m.waist != null); return {waistEnd: inWk ? e?.last : null, waistDelta: inWk && b && e ? e.last - b.last : null}; })(),
   };
 }
 function insights(W) {
@@ -1014,6 +1113,7 @@ function insights(W) {
   out.push(['run', W.exDays ? `${W.exDays} gün hareket ettin, toplam ${W.exTotal} dakika. ${W.exTotal >= 150 ? 'Haftalık 150 dakika önerisini geçtin.' : `Haftalık 150 dakikaya ${150 - W.exTotal} dakika kaldı.`}` : 'Bu hafta egzersiz kaydı yok. Günde 20 dakikalık yürüyüşle başlayabilirsin.']);
   const best = W.past.filter(x => hasData(x.d)).sort((a, b) => b.score - a.score)[0];
   if (best) out.push(['spark', `En iyi günün ${DAYS[parseKey(best.k).getDay()]} oldu (skor ${best.score}).`]);
+  if (W.waistDelta != null && Math.abs(W.waistDelta) >= .1) out.push([W.waistDelta < 0 ? 'down' : 'trend', W.waistDelta < 0 ? `Belin bu hafta ${fmt(-W.waistDelta)} cm inceldi.` : `Bel ölçün bu hafta ${fmt(W.waistDelta)} cm arttı.`]);
   if (W.kcalAvg != null) out.push(['meal', `Kalori kaydettiğin ${W.kcalDays} günde ortalama ${fmtInt(W.kcalAvg)} kcal aldın (hedef ${fmtInt(kcalGoal())}).`]);
   return out;
 }
@@ -1025,6 +1125,7 @@ function reportText(W) {
   lines.push(`Egzersiz: ${W.exTotal} dk (${W.exDays} gün), ~${fmtInt(W.exKcal)} kcal`);
   if (W.kcalAvg != null) lines.push(`Kalori: ortalama ${fmtInt(W.kcalAvg)} kcal/gün (${W.kcalDays} gün kayıt)`);
   if (W.stepAvg != null) lines.push(`Adım: ortalama ${fmtInt(W.stepAvg)}/gün`);
+  if (W.waistEnd != null) lines.push(`Bel: ${fmt(W.waistEnd)} cm${W.waistDelta != null ? ` (${W.waistDelta <= 0 ? '−' : '+'}${fmt(Math.abs(W.waistDelta))} cm)` : ''}`);
   lines.push(`Disiplin listesi: %${Math.round(W.habitAvg * 100)}`, '', 'Günler:');
   W.days.filter(x => !x.future).forEach(x => {
     const d = x.d, w = S.weights.find(z => z.date === x.k);
@@ -1109,6 +1210,8 @@ function renderSettings() {
     ${r.weigh.on ? `<div class="st-times"><input class="ui-input" type="time" data-rem="weigh.time" value="${r.weigh.time}"></div>` : ''}
     <div class="st-row"><div class="st-row-b"><div class="st-row-n">Akşam notu ve disiplin listesi</div><div class="st-row-d">Her gün ${r.note.time}</div></div>${sw('note', r.note.on)}</div>
     ${r.note.on ? `<div class="st-times"><input class="ui-input" type="time" data-rem="note.time" value="${r.note.time}"></div>` : ''}
+    <div class="st-row"><div class="st-row-b"><div class="st-row-n">Haftalık beden ölçüsü</div><div class="st-row-d">Her ${DAYS[r.measure.wd]} ${r.measure.time}</div></div>${sw('measure', r.measure.on)}</div>
+    ${r.measure.on ? `<div class="st-times"><select class="ui-input" data-rem="measure.wd">${[1,2,3,4,5,6,0].map(i => `<option value="${i}" ${r.measure.wd === i ? 'selected' : ''}>${DAYS[i]}</option>`).join('')}</select><input class="ui-input" type="time" data-rem="measure.time" value="${r.measure.time}"></div>` : ''}
     <p class="st-note">${notifState}</p>
   </section>
   </div><div class="ui-col">
@@ -1160,10 +1263,17 @@ function renderSheet() {
     body = `<div class="ui-fields2">
       <div class="ui-field"><label class="ui-label" for="sh-kg">Kilo (kg)</label><input class="ui-input" id="sh-kg" inputmode="decimal" placeholder="${last ? fmt(last.kg) : ''}"></div>
       <div class="ui-field"><label class="ui-label" for="sh-date">Tarih</label><input class="ui-input" id="sh-date" type="date" value="${todayKey()}" max="${todayKey()}"></div>
-      <div class="ui-field"><label class="ui-label" for="sh-fat">Yağ oranı (%)</label><input class="ui-input" id="sh-fat" inputmode="decimal" placeholder="İsteğe bağlı"></div>
-      <div class="ui-field"><label class="ui-label" for="sh-waist">Bel (cm)</label><input class="ui-input" id="sh-waist" inputmode="decimal" placeholder="İsteğe bağlı"></div></div>
+      <div class="ui-field"><label class="ui-label" for="sh-fat">Yağ oranı (%)</label><input class="ui-input" id="sh-fat" inputmode="decimal" placeholder="İsteğe bağlı"></div></div>
       <p class="st-note">En doğru karşılaştırma için her gün aynı saatte, sabah aç karnına tartıl.</p>`;
     foot = `<button class="ui-btn pri" data-act="weightSave">Kaydet</button>`;
+  }
+  if (sh.type === 'measure') {
+    const rec = S.measures.find(m => m.date === sh.date) || {}, E = measureEnds();
+    t = sh.edit ? 'Ölçüyü düzenle' : 'Ölçü ekle';
+    body = `<div class="ui-field"><label class="ui-label" for="ms-date">Tarih</label><input class="ui-input" id="ms-date" type="date" value="${sh.date}" max="${todayKey()}" ${sh.edit ? 'disabled' : ''}></div>
+      <div class="ms-fields">${MEASURES.map(k => `<div class="ui-field"><label class="ui-label" for="ms-${k.id}">${k.n} (cm)</label><span class="ms-hint">${k.d}</span><input class="ui-input" id="ms-${k.id}" inputmode="decimal" value="${rec[k.id] != null ? fmt(rec[k.id]) : ''}" placeholder="${E[k.id] ? 'Son: ' + fmt(E[k.id].last) : '—'}"></div>`).join('')}</div>
+      <p class="st-note">Sabah aç karnına, mezurayı sıkmadan ve yere paralel tutarak ölç. Her seferinde aynı noktadan ölçmek karşılaştırmayı doğru yapar.</p>`;
+    foot = `<button class="ui-btn pri" data-act="measureSave">Kaydet</button>`;
   }
   if (sh.type === 'steps') {
     t = 'Adım sayısı';
@@ -1231,6 +1341,28 @@ function confirmBox(title, text, yes, fn, danger = true) { confirmFn = fn; openS
 function drawCharts() {
   const wc = $('#wt-chart'); if (wc) drawWeightChart(wc);
   const rc = $('#rp-chart'); if (rc) drawWeekChart(rc);
+  const mc = $('#ms-chart'); if (mc) drawMeasureChart(mc);
+}
+function drawMeasureChart(el) {
+  const W = el.clientWidth || 320, H = el.clientHeight || 210, key = ui.mKey;
+  const pts = sortedMeasures().filter(m => m[key] != null).map(m => ({date: m.date, v: m[key]}));
+  if (pts.length < 2) { el.innerHTML = `<div style="height:100%;display:flex;align-items:center;justify-content:center;text-align:center" class="ui-empty-note">Grafik için bu bölgede en az iki ölçüm gerekiyor.</div>`; return; }
+  const pl = 34, pr = 12, pt = 14, pb = 22;
+  const lo = Math.floor(Math.min(...pts.map(p => p.v)) - 1), hi = Math.ceil(Math.max(...pts.map(p => p.v)) + 1);
+  const t0 = parseKey(pts[0].date), span = Math.max(1, parseKey(pts[pts.length - 1].date) - t0);
+  const X = k => pl + (parseKey(k) - t0) / span * (W - pl - pr), Y = v => pt + (hi - v) / (hi - lo) * (H - pt - pb);
+  const step = Math.max(1, Math.ceil((hi - lo) / 4));
+  let g = '';
+  for (let v = lo; v <= hi; v += step) g += `<line x1="${pl}" x2="${W - pr}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/><text x="${pl - 6}" y="${Y(v) + 4}" text-anchor="end">${v}</text>`;
+  const line = pts.map((p, i) => `${i ? 'L' : 'M'}${X(p.date).toFixed(1)},${Y(p.v).toFixed(1)}`).join('');
+  const area = line + `L${X(pts[pts.length - 1].date)},${H - pb}L${X(pts[0].date)},${H - pb}Z`;
+  const ends = [pts[0], pts[pts.length - 1]];
+  el.innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+    <defs><linearGradient id="msg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="var(--acc)" stop-opacity=".18"/><stop offset="1" stop-color="var(--acc)" stop-opacity="0"/></linearGradient></defs>
+    ${g}<path d="${area}" fill="url(#msg)"/><path d="${line}" fill="none" stroke="var(--acc)" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+    ${pts.map(p => `<circle cx="${X(p.date)}" cy="${Y(p.v)}" r="3.2" fill="var(--card)" stroke="var(--acc)" stroke-width="1.6"/>`).join('')}
+    ${ends.map((p, i) => `<text x="${X(p.date)}" y="${H - 5}" text-anchor="${i ? 'end' : 'start'}">${shortDate(p.date)}</text>`).join('')}
+    <text x="${X(ends[1].date) - 4}" y="${Y(ends[1].v) - 12}" text-anchor="end" style="fill:var(--acc);font-weight:600;paint-order:stroke;stroke:var(--card);stroke-width:4px">${fmt(ends[1].v)} cm</text></svg>`;
 }
 function drawWeightChart(el) {
   const W = el.clientWidth || 320, H = el.clientHeight || 210, p = S.profile;
@@ -1439,13 +1571,30 @@ document.addEventListener('click', e => {
       const kg = num($('#sh-kg').value), date = $('#sh-date').value || todayKey();
       if (!kg || kg < 25 || kg > 350) { toast('Geçerli bir kilo gir'); return; }
       S.weights = S.weights.filter(w => w.date !== date);
-      S.weights.push({date, kg: +kg.toFixed(1), fat: num($('#sh-fat').value), waist: num($('#sh-waist').value), src: 'manual'});
+      S.weights.push({date, kg: +kg.toFixed(1), fat: num($('#sh-fat').value), src: 'manual'});
       save(); closeSheet();
       const p = S.profile; if (kg <= p.goalWeight) toast('Tebrikler, hedef kilona ulaştın!');
       break;
     }
     case 'delWeight': confirmBox('Tartıyı sil', `${longDate(v)} tarihli tartı silinecek.`, 'Sil', () => { S.weights = S.weights.filter(w => w.date !== v); save(); }); break;
     case 'range': ui.range = +v; render(); break;
+    case 'wtView': ui.wtView = v; render(); break;
+    case 'mKey': ui.mKey = v; render(); break;
+    case 'addMeasure': openSheet({type: 'measure', date: todayKey()}); break;
+    case 'editMeasure': openSheet({type: 'measure', date: v, edit: true}); break;
+    case 'measureSave': {
+      const date = $('#ms-date').value || todayKey(), rec = {};
+      let bad = false;
+      MEASURES.forEach(k => { const n = num($('#ms-' + k.id).value); if (n == null) return; if (n < 10 || n > 250) bad = true; else rec[k.id] = +n.toFixed(1); });
+      if (bad) { toast('Ölçüler 10–250 cm arasında olmalı'); return; }
+      if (!Object.keys(rec).length && !ui.sheet.edit) { toast('En az bir ölçü gir'); return; }
+      // Düzenlemede boşaltılan alan silinir; yeni eklemede aynı günün diğer ölçüleri korunur
+      const prev = ui.sheet.edit ? {} : S.measures.find(m => m.date === date) || {};
+      S.measures = S.measures.filter(m => m.date !== date);
+      if (Object.keys(rec).length || Object.keys(prev).length > 1) S.measures.push({...prev, ...rec, date});
+      ui.wtView = 'measure'; save(); closeSheet(); break;
+    }
+    case 'delMeasure': confirmBox('Ölçümü sil', `${longDate(v)} tarihli ölçüm silinecek.`, 'Sil', () => { S.measures = S.measures.filter(m => m.date !== v); save(); }); break;
     case 'healthSync': post({cmd: 'health', days: 365, manual: true}); toast('Apple Sağlık’tan alınıyor…'); break;
     case 'csv': pickFile('.csv,.txt,.tsv,text/csv,text/plain', txt => {
       const T = parseTable(txt);
@@ -1528,9 +1677,10 @@ document.addEventListener('input', e => {
 });
 document.addEventListener('change', e => {
   const t = e.target;
+  if (t.id === 'ms-date' && ui.sheet?.type === 'measure' && t.value) { ui.sheet.date = t.value; keepSheet(); return; }
   if (t.dataset.csv && ui.sheet?.type === 'csv') { ui.sheet.map[t.dataset.csv] = t.dataset.csv === 'dayFirst' ? t.value === '1' : +t.value; keepSheet(); return; }
   if (t.dataset.set) { const n = num(t.value); const k = t.dataset.set; S.settings[k] = n && n > 0 ? Math.round(n) : (['waterGoal', 'kcalGoal'].includes(k) ? null : S.settings[k]); if (k === 'glass' && !(n > 0)) S.settings.glass = 250; save(); syncReminders(); render(); }
-  if (t.dataset.rem) { const [a, b] = t.dataset.rem.split('.'); if (t.value) { S.settings.rem[a][b] = t.value; save(); syncReminders(); render(); } }
+  if (t.dataset.rem) { const [a, b] = t.dataset.rem.split('.'); if (t.value) { S.settings.rem[a][b] = b === 'wd' ? +t.value : t.value; save(); syncReminders(); render(); } }
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && ui.sheet) closeSheet(); });
 // Gün değişince bugünü güncelle
