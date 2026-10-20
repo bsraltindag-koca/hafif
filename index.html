@@ -138,13 +138,51 @@ svg{display:block}
 @media (min-width:900px){.ui-toast{bottom:28px}}
 
 /* ---------- giriş (onboarding) ---------- */
-.ob-wrap{max-width:440px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 20px) 16px calc(env(safe-area-inset-bottom) + 16px)}
-.ob-logo{display:flex;align-items:center;gap:10px;margin-bottom:14px}
-.ob-logo b{font-size:22px;font-weight:600}
-.ob-intro{color:var(--ink2);font-size:var(--fs-sec);margin:0 0 14px}
-.ob-wrap .ui-field{margin-bottom:9px}
-.ob-wrap .ui-input{height:40px}
-.ob-ver{text-align:center;color:var(--ink3);font-size:var(--fs-label);margin-top:10px}
+.ob-page{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;background:radial-gradient(120% 60% at 50% -10%,color-mix(in srgb,var(--p2) 30%,transparent),transparent 70%),radial-gradient(80% 40% at 100% 0%,color-mix(in srgb,var(--p1) 22%,transparent),transparent 70%),var(--bg)}
+.ob-wrap{width:100%;max-width:440px;margin:0 auto;flex:1;display:flex;flex-direction:column;padding:calc(env(safe-area-inset-top) + 18px) 20px calc(env(safe-area-inset-bottom) + 18px)}
+.ob-top{display:flex;align-items:center;gap:12px;height:36px;margin-bottom:12px}
+.ob-dots{display:flex;gap:6px;flex:1;justify-content:center;padding-right:36px}
+.ob-dots i{width:22px;height:5px;border-radius:9px;background:color-mix(in srgb,var(--acc) 20%,var(--line))}
+.ob-dots i.on{background:var(--hero);width:34px}
+.ob-wrap.ob-center{justify-content:center}
+.ob-hero{text-align:center}
+.ob-mark{width:84px;height:84px;margin:0 auto 18px;filter:drop-shadow(0 12px 24px color-mix(in srgb,var(--p1) 35%,transparent))}
+.ob-mark svg{width:100%;height:100%}
+.ob-name{font-size:34px;font-weight:700;letter-spacing:-.03em;margin:0}
+.ob-tag{font-size:17px;color:var(--ink2);margin:6px 0 0}
+.ob-feats{list-style:none;padding:0;margin:30px 0 0;display:flex;flex-direction:column;gap:10px;text-align:left}
+.ob-feat{display:flex;align-items:center;gap:14px;padding:12px 14px;border-radius:16px;background:color-mix(in srgb,var(--card) 80%,transparent);border:1px solid var(--line);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.ob-feat span{color:var(--acc)}
+.ob-feat b{display:block;font-weight:600;font-size:var(--fs-body)}
+.ob-feat small{display:block;color:var(--ink2);font-size:var(--fs-sec)}
+.ob-h{font-size:26px;font-weight:700;letter-spacing:-.02em;margin:0}
+.ob-sub{color:var(--ink2);font-size:var(--fs-body);margin:6px 0 16px}
+.ob-field{margin-bottom:14px}
+.ob-in{display:flex;align-items:center;height:52px;border:1.5px solid var(--line);border-radius:14px;background:var(--card);padding:0 14px;transition:border-color .15s,box-shadow .15s}
+.ob-in:focus-within{border-color:var(--acc);box-shadow:0 0 0 4px color-mix(in srgb,var(--acc) 14%,transparent)}
+.ob-in input{flex:1;min-width:0;width:100%;border:0;background:none;outline:none;font-size:18px;font-weight:500;height:100%}
+.ob-in input::placeholder{color:var(--ink3);font-weight:400}
+.ob-in span{color:var(--ink2);font-size:var(--fs-btn);font-weight:500;margin-left:6px}
+.ob-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+.ob-pick{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ob-card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;height:64px;border:1.5px solid var(--line);border-radius:14px;background:var(--card);font-weight:600;color:var(--ink2);transition:.15s}
+.ob-card[aria-pressed="true"]{border-color:var(--acc);color:var(--acc);background:var(--acc-soft);box-shadow:0 0 0 1px var(--acc) inset}
+.ob-acts{display:flex;flex-direction:column;gap:8px}
+.ob-act{display:flex;align-items:center;gap:12px;padding:11px 14px;border:1.5px solid var(--line);border-radius:14px;background:var(--card);text-align:left;transition:.15s}
+.ob-act b{display:block;font-weight:600}
+.ob-act small{display:block;color:var(--ink2);font-size:var(--fs-sec)}
+.ob-act i{width:20px;height:20px;border-radius:50%;border:2px solid var(--line);flex:none;margin-left:auto;transition:.15s}
+.ob-act[aria-pressed="true"]{border-color:var(--acc);background:var(--acc-soft)}
+.ob-act[aria-pressed="true"] i{border:6px solid var(--acc)}
+.ob-sum{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:14px;background:var(--hero);color:#fff;margin:2px 0 16px;font-size:var(--fs-sec)}
+.ob-sum b{font-size:var(--fs-body)}
+.ob-err{color:var(--danger);font-size:var(--fs-sec);min-height:18px;margin:-4px 0 6px}
+.ob-foot{margin-top:24px;display:flex;flex-direction:column;align-items:center;gap:10px}
+.ob-foot .ui-btn{min-width:200px;height:50px;font-size:16px;font-weight:600}
+.ob-privacy{display:flex;align-items:center;gap:6px;color:var(--ink2);font-size:var(--fs-sec)}
+.ob-ver{text-align:center;color:var(--ink3);font-size:var(--fs-label)}
+@media (max-height:600px){.ob-sub{display:none}.ob-h{margin-bottom:12px}.ob-act small{display:none}.ob-top{margin-bottom:8px}.ob-field{margin-bottom:10px}.ob-sum{margin-bottom:10px;padding:8px 12px}.ob-foot{margin-top:14px}.ob-act{padding:7px 12px}.ob-in{height:42px}.ob-foot .ui-btn{height:44px}.ob-feat small{display:none}.ob-name{font-size:28px}.ob-tag{font-size:15px}}
+@media (max-height:700px){.ob-mark{width:64px;height:64px;margin-bottom:12px}.ob-feats{margin-top:18px}.ob-feat{padding:9px 12px}.ob-sub{margin-bottom:14px}.ob-act{padding:8px 12px}.ob-in{height:46px}}
 
 /* ---------- bugün ---------- */
 .av{width:40px;height:40px;border-radius:50%;flex:none;overflow:hidden;background:var(--hero);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:18px;box-shadow:0 0 0 2px var(--card),0 0 0 3.5px color-mix(in srgb,var(--acc) 45%,transparent)}
@@ -340,7 +378,7 @@ svg{display:block}
 <div id="app"></div>
 <script>
 'use strict';
-const APP_VERSION = '2.1';
+const APP_VERSION = '2.2';
 const STORE_KEY = 'hafif.v1';
 
 /* ---------------- yardımcılar ---------------- */
@@ -398,6 +436,7 @@ const IC = {
   down:'<path d="m3 7 6 6 4-4 8 8"/><path d="M15 17h6v-6"/>',
   steps:'<path d="M7 16c-1.5 0-3-1-3-4s1.5-6 3.5-6S10 8 10 10.5 8.5 16 7 16z"/><path d="M5 19.5a2 2 0 0 0 4 0V18H5z"/><path d="M17 12c1.5 0 3-1 3-4s-1.5-5-3.5-5S14 5 14 7.5 15.5 12 17 12z"/><path d="M19 15.5a2 2 0 0 1-4 0V14h4z"/>',
   camera:'<path d="M4 8h3l1.5-2.5h7L17 8h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/>',
+  lock:'<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
   leaf:'<path d="M5 19c0-8 5-14 15-14 0 10-6 15-14 15"/><path d="M5 19c3-4 6-6 9-7.5"/>',
 };
 const ico = (n, cls = '') => `<svg class="ui-ico ${cls}" viewBox="0 0 24 24" aria-hidden="true">${IC[n]}</svg>`;
@@ -960,7 +999,7 @@ setInterval(() => {
 }, 20000);
 
 /* ---------------- arayüz durumu ---------------- */
-const ui = {tab: 'today', day: todayKey(), week: weekStart(todayKey()), range: 90, sheet: null, wtView: 'weight', mKey: 'waist', jrView: 'notes', phCat: 'all', cmpA: null, cmpB: null};
+const ui = {tab: 'today', day: todayKey(), week: weekStart(todayKey()), range: 90, sheet: null, wtView: 'weight', mKey: 'waist', jrView: 'notes', phCat: 'all', cmpA: null, cmpB: null, ob: null};
 let toastTimer;
 function toast(t) {
   document.querySelector('.ui-toast')?.remove();
@@ -986,7 +1025,7 @@ function safePage(fn) {
 function render() {
   applyTheme();
   const app = $('#app');
-  if (!S.profile) { app.innerHTML = renderOnboarding(); return; }
+  if (!S.profile) { ui.ob ||= {step: 0, err: '', d: {name: '', sex: 'f', age: '', height: '', weight: '', goal: '', activity: 1.375}}; app.innerHTML = renderOnboarding(); return; }
   const tabs = [['today','Bugün','today'],['weight','Kilo','scale'],['report','Rapor','report'],['journal','Günlük','journal'],['settings','Ayarlar','settings']];
   const scrollY = window.scrollY;
   app.innerHTML = `<div class="app-shell">
@@ -1011,25 +1050,67 @@ function ring(pct, color, size = 104, sw = 9, track = 'var(--line)') {
 
 /* ---- giriş ---- */
 function renderOnboarding() {
-  return `<div class="ob-wrap">
-    <div class="ob-logo">${logo(36)}<b>Hafif</b></div>
-    <p class="ob-intro">Su, öğün, hareket ve kilonu tek yerde takip et. Hedefini ve günlük kalori ihtiyacını hesaplamak için birkaç bilgi gerekiyor.</p>
-    <form id="ob-form" autocomplete="off">
-      <div class="ui-field"><label class="ui-label" for="ob-name">Adın</label><input class="ui-input" id="ob-name" name="name" maxlength="24" required></div>
-      <div class="ui-fields2">
-        <div class="ui-field"><label class="ui-label">Cinsiyet</label><div class="ui-chips" data-group="sex"><button type="button" class="ui-chip" data-act="chip" data-v="f" aria-pressed="true">Kadın</button><button type="button" class="ui-chip" data-act="chip" data-v="m" aria-pressed="false">Erkek</button></div></div>
-        <div class="ui-field"><label class="ui-label" for="ob-age">Yaş</label><input class="ui-input" id="ob-age" name="age" inputmode="numeric" required></div>
-      </div>
-      <div class="ui-fields2">
-        <div class="ui-field"><label class="ui-label" for="ob-h">Boy (cm)</label><input class="ui-input" id="ob-h" name="height" inputmode="numeric" required></div>
-        <div class="ui-field"><label class="ui-label" for="ob-w">Şu anki kilo</label><input class="ui-input" id="ob-w" name="weight" inputmode="decimal" placeholder="kg" required></div>
-      </div>
-      <div class="ui-field"><label class="ui-label" for="ob-g">Hedef kilo</label><input class="ui-input" id="ob-g" name="goal" inputmode="decimal" placeholder="kg" required></div>
-      <div class="ui-field"><label class="ui-label">Hareket düzeyi</label><div class="ui-chips" data-group="activity">${ACTIVITY.map((a, i) => `<button type="button" class="ui-chip" data-act="chip" data-v="${a.v}" aria-pressed="${i === 1}">${a.n}</button>`).join('')}</div></div>
-      <div style="display:flex;justify-content:center;margin-top:8px"><button class="ui-btn pri" style="min-width:160px" type="submit">Başla</button></div>
-    </form>
-    <div class="ob-ver">Hafif v${APP_VERSION}</div>
-  </div>`;
+  const o = ui.ob, d = o.d;
+  const dots = `<div class="ob-dots">${[1, 2].map(i => `<i class="${o.step >= i ? 'on' : ''}"></i>`).join('')}</div>`;
+  const top = `<div class="ob-top"><button class="ui-iconbtn" data-act="obBack" aria-label="Geri">${ico('left')}</button>${dots}</div>`;
+  const foot = (label, extra = '') => `<div class="ob-foot"><button class="ui-btn pri" type="submit">${label}</button>${extra}<div class="ob-ver">Hafif v${APP_VERSION}</div></div>`;
+  const field = (name, label, unit, mode, ph = '') => `<div class="ob-field"><label class="ui-label" for="ob-${name}">${label}</label><label class="ob-in"><input id="ob-${name}" data-ob="${name}" inputmode="${mode}" autocomplete="off" placeholder="${ph}" value="${esc(d[name])}">${unit ? `<span>${unit}</span>` : ''}</label></div>`;
+  let body;
+  if (o.step === 0) {
+    body = `<div class="ob-hero"><div class="ob-mark">${logo(84)}</div><h1 class="ob-name">Hafif</h1><p class="ob-tag">Hafif adımlarla hedefine.</p></div>
+      <ul class="ob-feats">
+        <li class="ob-feat"><span>${ico('drop')}</span><div><b>Su ve öğünler</b><small>Yazdığın öğünün kalorisi otomatik hesaplanır</small></div></li>
+        <li class="ob-feat"><span>${ico('run')}</span><div><b>Hareket ve ölçüler</b><small>Egzersiz, adım, kilo ve beden ölçüleri</small></div></li>
+        <li class="ob-feat"><span>${ico('report')}</span><div><b>Haftalık rapor</b><small>Hatırlatmalar ve motivasyon notlarıyla</small></div></li>
+      </ul>
+      ${foot('Başlayalım', `<div class="ob-privacy">${ico('lock', 'sm')}Verilerin yalnızca bu cihazda kalır</div>`)}`;
+  } else if (o.step === 1) {
+    body = `${top}<h1 class="ob-h">Seni tanıyalım</h1><p class="ob-sub">Kalori ve su ihtiyacını hesaplamak için.</p>
+      ${field('name', 'Adın', '', 'text', 'Örn: Büşra')}
+      <div class="ob-field"><span class="ui-label">Cinsiyet</span><div class="ob-pick">${[['f', 'Kadın'], ['m', 'Erkek']].map(([v, n]) => `<button type="button" class="ob-card" data-act="obSex" data-v="${v}" aria-pressed="${d.sex === v}">${n}</button>`).join('')}</div></div>
+      <div class="ob-row">${field('age', 'Yaş', 'yaş', 'numeric')}${field('height', 'Boy', 'cm', 'numeric')}</div>
+      <div class="ob-err">${o.err || ''}</div>
+      ${foot('Devam')}`;
+  } else {
+    const w = num(d.weight), g = num(d.goal), h = num(d.height);
+    let sum = '';
+    if (w >= 25 && g >= 25 && w <= 350 && g <= 350) {
+      const diff = w - g, b1 = h ? w / (h / 100) ** 2 : null, b2 = h ? g / (h / 100) ** 2 : null;
+      sum = `<div class="ob-sum">${ico(diff > 0 ? 'down' : 'target')}<div><b>${diff > 0 ? `${fmt(diff)} kg vermek istiyorsun` : diff < 0 ? `${fmt(-diff)} kg almak istiyorsun` : 'Kilonu korumak istiyorsun'}</b>${b1 ? `<br>VKİ ${fmt(b1)} → ${fmt(b2)} · ${bmiLabel(b2)}` : ''}</div></div>`;
+    }
+    body = `${top}<h1 class="ob-h">Hedefin</h1><p class="ob-sub">Gerçekçi bir hedef haftada 0,5–1 kg'dır.</p>
+      <div class="ob-row">${field('weight', 'Şu anki kilo', 'kg', 'decimal')}${field('goal', 'Hedef kilo', 'kg', 'decimal')}</div>
+      <div id="ob-sum">${sum}</div>
+      <div class="ob-field"><span class="ui-label">Hareket düzeyi</span><div class="ob-acts">${ACTIVITY.map(a => `<button type="button" class="ob-act" data-act="obAct" data-v="${a.v}" aria-pressed="${d.activity === a.v}"><div><b>${a.n}</b><small>${a.d}</small></div><i></i></button>`).join('')}</div></div>
+      <div class="ob-err">${o.err || ''}</div>
+      ${foot('Başla')}`;
+  }
+  return `<div class="ob-page"><form class="ob-wrap ${o.step === 0 ? 'ob-center' : ''}" id="ob-form" autocomplete="off" novalidate>${body}</form></div>`;
+}
+// Adımı doğrular; sorun yoksa ilerler ya da profili oluşturur
+function obNext() {
+  const o = ui.ob, d = o.d;
+  o.err = '';
+  if (o.step === 1) {
+    const a = num(d.age), h = num(d.height);
+    if (!d.name.trim()) o.err = 'Adını yazar mısın?';
+    else if (!a || a < 12 || a > 100) o.err = 'Yaşın 12 ile 100 arasında olmalı.';
+    else if (!h || h < 100 || h > 250) o.err = 'Boyunu santimetre olarak gir (örn. 165).';
+  }
+  if (o.step === 2) {
+    const w = num(d.weight), g = num(d.goal);
+    if (!w || w < 25 || w > 350) o.err = 'Şu anki kilonu gir (örn. 82,5).';
+    else if (!g || g < 25 || g > 350) o.err = 'Hedef kilonu gir.';
+    if (!o.err) {
+      S.profile = {name: d.name.trim(), sex: d.sex, age: Math.round(num(d.age)), height: Math.round(num(d.height)), startWeight: w, goalWeight: g, activity: d.activity, startDate: todayKey()};
+      S.weights.push({date: todayKey(), kg: w, fat: null, src: 'manual'});
+      ui.ob = null; save(); syncReminders(); post({cmd: 'notifyPermission'}); render(); window.scrollTo(0, 0);
+      return;
+    }
+  }
+  if (!o.err) o.step++;
+  render();
+  if (!o.err) setTimeout(() => $('.ob-in input')?.focus({preventScroll: true}), 60);
 }
 
 /* ---- bugün ---- */
@@ -1766,6 +1847,9 @@ document.addEventListener('click', e => {
     case 'delWeight': confirmBox('Tartıyı sil', `${longDate(v)} tarihli tartı silinecek.`, 'Sil', () => { S.weights = S.weights.filter(w => w.date !== v); save(); }); break;
     case 'range': ui.range = +v; render(); break;
     case 'wtView': ui.wtView = v; render(); break;
+    case 'obBack': ui.ob.err = ''; ui.ob.step = Math.max(0, ui.ob.step - 1); render(); break;
+    case 'obSex': ui.ob.d.sex = v; render(); break;
+    case 'obAct': ui.ob.d.activity = +v; render(); break;
     case 'jrView': ui.jrView = v; render(); break;
     case 'phCat': ui.phCat = v; render(); break;
     case 'avatarSet': pickImage(f => photoBusy(async () => { const {canvas} = await shrinkImage(f, 256, true); S.profile.photo = canvas.toDataURL('image/jpeg', .82); save(); render(); toast('Profil fotoğrafı güncellendi'); })); break;
@@ -1860,16 +1944,8 @@ function keepSheet() {
 }
 document.addEventListener('submit', e => {
   e.preventDefault();
-  if (e.target.id === 'ob-form') {
-    const f = e.target, w = num(f.weight.value), g = num(f.goal.value), h = num(f.height.value), a = num(f.age.value);
-    if (!w || w < 25 || w > 350) return toast('Geçerli bir kilo gir');
-    if (!g || g < 25 || g > 350) return toast('Geçerli bir hedef kilo gir');
-    if (!h || h < 100 || h > 250) return toast('Boyunu santimetre olarak gir');
-    if (!a || a < 12 || a > 100) return toast('Geçerli bir yaş gir');
-    S.profile = {name: f.name.value.trim(), sex: chipVal('sex'), age: Math.round(a), height: Math.round(h), startWeight: w, goalWeight: g, activity: +chipVal('activity'), startDate: todayKey()};
-    S.weights.push({date: todayKey(), kg: w, fat: null, src: 'manual'});
-    save(); syncReminders(); post({cmd: 'notifyPermission'}); render();
-  }
+  if (e.target.id === 'ob-form') { obNext(); }
+
   if (e.target.id === 'st-habit-form') {
     const n = e.target.h.value.trim(); if (!n) return;
     S.habits.push({id: uid(), n}); save(); render();
@@ -1878,6 +1954,11 @@ document.addEventListener('submit', e => {
 let noteT;
 document.addEventListener('input', e => {
   const t = e.target;
+  if (t.dataset.ob && ui.ob) {
+    ui.ob.d[t.dataset.ob] = t.value;
+    if (ui.ob.err) { ui.ob.err = ''; const er = $('.ob-err'); if (er) er.textContent = ''; }
+    if (ui.ob.step === 2 && (t.dataset.ob === 'weight' || t.dataset.ob === 'goal')) { const tmp = document.createElement('div'); tmp.innerHTML = renderOnboarding(); $('#ob-sum').innerHTML = tmp.querySelector('#ob-sum').innerHTML; }
+  }
   if (t.id === 'sh-text') syncMealKcal();
   if (t.id === 'sh-kcal') { ui.sheet.manual = t.value.trim() !== ''; syncMealKcal(); }
   if (t.id === 'td-note') { clearTimeout(noteT); noteT = setTimeout(() => { day(ui.day).note = t.value; save(); const s = $('#td-saved'); if (s) s.textContent = 'Kaydedildi'; }, 400); }
