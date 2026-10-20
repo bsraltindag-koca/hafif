@@ -147,6 +147,29 @@ svg{display:block}
 .ob-ver{text-align:center;color:var(--ink3);font-size:var(--fs-label);margin-top:10px}
 
 /* ---------- bugün ---------- */
+.av{width:44px;height:44px;border-radius:50%;flex:none;overflow:hidden;background:var(--hero);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:18px;box-shadow:0 0 0 2px var(--card),0 0 0 3.5px color-mix(in srgb,var(--acc) 45%,transparent)}
+.av img{width:100%;height:100%;object-fit:cover;display:block}
+.av.lg{width:72px;height:72px;font-size:28px}
+.td-hello{display:flex;align-items:center;gap:12px;min-width:0}
+.ph-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.ph-tile{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;background:var(--bg)}
+.ph-tile img{width:100%;height:100%;object-fit:cover;display:block}
+.ph-tile i{position:absolute;left:6px;bottom:6px;width:8px;height:8px;border-radius:50%;box-shadow:0 0 0 2px rgba(255,255,255,.9)}
+.ph-month{font-size:var(--fs-sec);color:var(--ink2);font-weight:600;margin:14px 0 6px}
+.ph-month:first-child{margin-top:0}
+.ph-cmp{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ph-cmp figure{margin:0}
+.ph-cmp img{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:12px;display:block;background:var(--bg)}
+.ph-cmp figcaption{font-size:var(--fs-sec);color:var(--ink2);margin-top:6px;text-align:center}
+.ph-cmp figcaption b{display:block;color:var(--ink);font-size:var(--fs-body)}
+.ph-cmp-sum{text-align:center;font-size:var(--fs-sec);color:var(--acc);font-weight:600;margin-top:10px}
+.ph-view img{width:100%;max-height:60vh;object-fit:contain;border-radius:12px;background:var(--bg);display:block}
+.ph-thumb{width:40px;height:40px;border-radius:10px;object-fit:cover;flex:none;background:var(--bg)}
+.ph-attach{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.ph-attach img{width:64px;height:64px;border-radius:12px;object-fit:cover;background:var(--bg)}
+.ph-pick{display:flex;align-items:center;justify-content:center;width:100%;aspect-ratio:4/3;border:1.5px dashed var(--line);border-radius:14px;color:var(--ink2);gap:8px;font-size:var(--fs-btn);margin-bottom:12px;background:var(--bg)}
+.ph-pick img{width:100%;height:100%;object-fit:cover;border-radius:13px}
+@media (min-width:900px){.ph-grid{grid-template-columns:repeat(4,1fr)}}
 .td-date{display:flex;align-items:center;gap:2px;margin-left:-8px}
 .td-date span{color:var(--ink2);font-size:var(--fs-sec);min-width:0}
 .td-streak{display:inline-flex;align-items:center;gap:5px;color:var(--move);background:var(--move-soft);padding:5px 10px 5px 8px;border-radius:999px;font-size:var(--fs-sec);font-weight:600;white-space:nowrap}
@@ -317,7 +340,7 @@ svg{display:block}
 <div id="app"></div>
 <script>
 'use strict';
-const APP_VERSION = '1.8';
+const APP_VERSION = '1.9';
 const STORE_KEY = 'hafif.v1';
 
 /* ---------------- yardımcılar ---------------- */
@@ -374,6 +397,7 @@ const IC = {
   trend:'<path d="m3 17 6-6 4 4 8-8"/><path d="M15 7h6v6"/>',
   down:'<path d="m3 7 6 6 4-4 8 8"/><path d="M15 17h6v-6"/>',
   steps:'<path d="M7 16c-1.5 0-3-1-3-4s1.5-6 3.5-6S10 8 10 10.5 8.5 16 7 16z"/><path d="M5 19.5a2 2 0 0 0 4 0V18H5z"/><path d="M17 12c1.5 0 3-1 3-4s-1.5-5-3.5-5S14 5 14 7.5 15.5 12 17 12z"/><path d="M19 15.5a2 2 0 0 1-4 0V14h4z"/>',
+  camera:'<path d="M4 8h3l1.5-2.5h7L17 8h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/>',
   leaf:'<path d="M5 19c0-8 5-14 15-14 0 10-6 15-14 15"/><path d="M5 19c3-4 6-6 9-7.5"/>',
 };
 const ico = (n, cls = '') => `<svg class="ui-ico ${cls}" viewBox="0 0 24 24" aria-hidden="true">${IC[n]}</svg>`;
@@ -548,7 +572,7 @@ domates çorba|45|250
 tavuk çorba,tavuk suyu|45|250
 çorba|55|250
 pilav,pirinç|160|150|kaşık:25
-bulgur|120|150|kaşık:25
+bulgur pilav,bulgur|120|150|kaşık:25
 makarna|158|200|kaşık:25
 erişte|160|200
 mantı|220|250
@@ -719,6 +743,7 @@ function defaultState() {
     days: {},
     weights: [],
     measures: [],
+    photos: [],
   };
 }
 let S;
@@ -730,13 +755,89 @@ function load() {
   S.settings = {...d.settings, ...saved};
   S.settings.rem = {};
   for (const k of Object.keys(d.settings.rem)) S.settings.rem[k] = {...d.settings.rem[k], ...(savedRem[k] || {})};
-  S.days ||= {}; S.weights ||= []; S.habits ||= d.habits; S.measures ||= [];
+  S.days ||= {}; S.weights ||= []; S.habits ||= d.habits; S.measures ||= []; S.photos ||= [];
   // v1.5 öncesi tartıya girilen bel ölçüsünü ölçüler listesine taşı
   S.weights.forEach(w => { if (w.waist) { const m = S.measures.find(x => x.date === w.date); if (m) m.waist ??= w.waist; else S.measures.push({date: w.date, waist: w.waist}); } delete w.waist; });
 }
 function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch {} }
 const day = k => (S.days[k] ||= {water: 0, meals: {}, workouts: [], habits: {}, mood: null, note: '', steps: null});
 const peekDay = k => S.days[k] || {water: 0, meals: {}, workouts: [], habits: {}, mood: null, note: '', steps: null};
+
+/* ---------------- fotoğraflar ----------------
+   Görseller küçültülüp IndexedDB'de tutulur (localStorage birkaç MB ile sınırlı);
+   S.photos yalnızca bilgi kaydı: {id, date, cat, note}. */
+const PHOTO_CATS = [
+  {id: 'progress', n: 'Değişim', c: 'var(--acc)'},
+  {id: 'meal',     n: 'Öğün',    c: 'var(--meal)'},
+  {id: 'workout',  n: 'Spor',    c: 'var(--move)'},
+  {id: 'other',    n: 'Diğer',   c: 'var(--mind)'},
+];
+const PDB = {
+  db: null,
+  open() {
+    return this.db ||= new Promise((res, rej) => {
+      try { const r = indexedDB.open('hafif-photos', 1); r.onupgradeneeded = () => r.result.createObjectStore('p'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }
+      catch (e) { rej(e); }
+    });
+  },
+  async tx(mode, fn) { const db = await this.open(); return new Promise((res, rej) => { const t = db.transaction('p', mode), st = t.objectStore('p'), r = fn(st); t.oncomplete = () => res(r?.result); t.onerror = () => rej(t.error); }); },
+  put(id, v) { return this.tx('readwrite', st => st.put(v, id)); },
+  get(id) { return this.tx('readonly', st => st.get(id)); },
+  del(id) { return this.tx('readwrite', st => st.delete(id)); },
+  clear() { return this.tx('readwrite', st => st.clear()); },
+};
+const photoURL = {};
+// Dosyayı en uzun kenarı `max` px olacak şekilde küçültüp JPEG'e çevirir; square=true ise ortadan kare kırpar
+function shrinkImage(file, max, square = false, q = .82) {
+  return new Promise((res, rej) => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      let sx = 0, sy = 0, sw = img.naturalWidth, sh = img.naturalHeight;
+      if (square) { const m = Math.min(sw, sh); sx = (sw - m) / 2; sy = (sh - m) / 2; sw = sh = m; }
+      const k = Math.min(1, max / Math.max(sw, sh)), c = document.createElement('canvas');
+      c.width = Math.round(sw * k); c.height = Math.round(sh * k);
+      c.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      c.toBlob(b => b ? res({blob: b, canvas: c}) : rej(new Error('Görsel işlenemedi')), 'image/jpeg', q);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('Görsel okunamadı')); };
+    img.src = url;
+  });
+}
+function pickImage(cb) {
+  const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*';
+  inp.onchange = () => { const f = inp.files[0]; if (f) cb(f); };
+  inp.click();
+}
+// Seçilen dosyayı depoya yazar, yeni foto kimliğini döndürür
+async function storePhoto(file) {
+  const [full, thumb] = await Promise.all([shrinkImage(file, 1280), shrinkImage(file, 360, true, .75)]);
+  const id = 'p' + Date.now().toString(36) + uid();
+  await PDB.put(id, {full: full.blob, thumb: thumb.blob});
+  return id;
+}
+async function removePhoto(id) {
+  if (!id) return;
+  S.photos = S.photos.filter(p => p.id !== id);
+  try { await PDB.del(id); } catch {}
+  if (photoURL[id]) { Object.values(photoURL[id]).forEach(u => URL.revokeObjectURL(u)); delete photoURL[id]; }
+}
+const phImg = (id, kind = 'thumb', cls = '') => `<img data-ph="${id}" data-kind="${kind}" class="${cls}" alt="">`;
+async function hydratePhotos() {
+  for (const img of document.querySelectorAll('img[data-ph]')) {
+    const id = img.dataset.ph, kind = img.dataset.kind || 'thumb';
+    try {
+      if (!photoURL[id]?.[kind]) { const rec = await PDB.get(id); if (!rec?.[kind]) continue; (photoURL[id] ||= {})[kind] = URL.createObjectURL(rec[kind]); }
+      img.src = photoURL[id][kind];
+    } catch {}
+  }
+}
+function upsertPhotoMeta(id, meta) {
+  const ex = S.photos.find(p => p.id === id);
+  if (ex) Object.assign(ex, meta); else S.photos.push({id, ...meta});
+}
+const avatar = (cls = '') => `<span class="av ${cls}">${S.profile?.photo ? `<img src="${S.profile.photo}" alt="">` : esc((S.profile?.name || '?').trim().charAt(0).toLocaleUpperCase('tr'))}</span>`;
+function photoBusy(fn) { toast('Fotoğraf hazırlanıyor…'); return fn().catch(e => toast(e?.name === 'QuotaExceededError' ? 'Cihazda yer kalmadı' : 'Fotoğraf kaydedilemedi: bu tarayıcı fotoğraf saklamaya izin vermiyor olabilir')); }
 
 /* ---------------- hesaplar ---------------- */
 const sortedWeights = () => [...S.weights].sort((a, b) => a.date.localeCompare(b.date));
@@ -857,7 +958,7 @@ setInterval(() => {
 }, 20000);
 
 /* ---------------- arayüz durumu ---------------- */
-const ui = {tab: 'today', day: todayKey(), week: weekStart(todayKey()), range: 90, sheet: null, wtView: 'weight', mKey: 'waist'};
+const ui = {tab: 'today', day: todayKey(), week: weekStart(todayKey()), range: 90, sheet: null, wtView: 'weight', mKey: 'waist', jrView: 'notes', phCat: 'all', cmpA: null, cmpB: null};
 let toastTimer;
 function toast(t) {
   document.querySelector('.ui-toast')?.remove();
@@ -897,6 +998,7 @@ function render() {
   </div>${ui.sheet ? renderSheet() : ''}`;
   window.scrollTo(0, scrollY);
   drawCharts();
+  hydratePhotos();
 }
 const logo = s => `<svg width="${s}" height="${s}" viewBox="0 0 40 40" aria-hidden="true"><defs><linearGradient id="lg${s}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--p1)"/><stop offset="1" stop-color="var(--p2)"/></linearGradient></defs><rect width="40" height="40" rx="11" fill="url(#lg${s})"/><path d="M12 27c0-9 6-15 16-15 0 10-6 15-14 15" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 27c3-4 6-6.5 9.5-8" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg>`;
 
@@ -972,13 +1074,13 @@ function renderToday() {
       ${MEALS.map(m => { const x = d.meals?.[m.id]; const on = x && (x.text || x.kcal); return `<button class="td-meal" data-act="meal" data-v="${m.id}">
         <i class="td-meal-dot ${on ? 'on' : ''}"></i>
         <div class="td-meal-b"><div class="td-meal-n">${m.n}</div><div class="td-meal-d">${on ? esc(x.text || 'Kaydedildi') : (S.settings.rem.meals[m.id] + ' · Eklemek için dokun')}</div></div>
-        <span class="td-meal-k ui-num">${on && x.kcal ? (x.est ? '~' : '') + fmtInt(x.kcal) + ' kcal' : ''}</span>
+        <span class="td-meal-k ui-num">${on && x.kcal ? (x.est ? '~' : '') + fmtInt(x.kcal) + ' kcal' : ''}</span>${x?.photo ? phImg(x.photo, 'thumb', 'ph-thumb') : ''}
       </button>`; }).join('')}
     </section>`;
 
   const move = `<section class="ui-card">
       <div class="ui-card-h"><h3 class="ui-card-t"><span style="color:var(--move)">${ico('run','sm')}</span>Egzersizler</h3><button class="ui-btn ghost sm" data-act="addWorkout">${ico('plus','sm')}Ekle</button></div>
-      ${(d.workouts || []).length ? d.workouts.map(w => `<div class="td-wo"><div class="td-wo-b"><div class="td-wo-n">${esc(WORKOUTS.find(x => x.id === w.type)?.n || 'Egzersiz')}</div><div class="td-wo-d ui-num">${w.min} dk · ~${fmtInt(w.kcal)} kcal${w.note ? ' · ' + esc(w.note) : ''}</div></div><button class="ui-iconbtn" data-act="delWorkout" data-v="${w.id}" aria-label="Sil">${ico('trash','sm')}</button></div>`).join('') : '<p class="ui-empty-note">Bugün henüz egzersiz yok. Kısa bir yürüyüş bile sayılır.</p>'}
+      ${(d.workouts || []).length ? d.workouts.map(w => `<div class="td-wo">${w.photo ? phImg(w.photo, 'thumb', 'ph-thumb') : ''}<div class="td-wo-b"><div class="td-wo-n">${esc(WORKOUTS.find(x => x.id === w.type)?.n || 'Egzersiz')}</div><div class="td-wo-d ui-num">${w.min} dk · ~${fmtInt(w.kcal)} kcal${w.note ? ' · ' + esc(w.note) : ''}</div></div><button class="ui-iconbtn" data-act="delWorkout" data-v="${w.id}" aria-label="Sil">${ico('trash','sm')}</button></div>`).join('') : '<p class="ui-empty-note">Bugün henüz egzersiz yok. Kısa bir yürüyüş bile sayılır.</p>'}
       <div class="td-steps"><span>${ico('steps','sm')}</span><span style="flex:1">Adım ${NATIVE && S.settings.health ? '(Apple Sağlık)' : ''}</span><b class="ui-num">${d.steps != null ? fmtInt(d.steps) : '–'}</b><span class="ui-num">/ ${fmtInt(S.settings.stepGoal)}</span><button class="ui-btn ghost sm" data-act="steps">Gir</button></div>
     </section>`;
 
@@ -1000,10 +1102,10 @@ function renderToday() {
     </section>`;
 
   return `<header class="ui-head">
-      <div style="min-width:0">
+      <div class="td-hello"><button data-act="tab" data-v="settings" aria-label="Profil">${avatar()}</button><div style="min-width:0">
         <div class="td-date"><button class="ui-iconbtn" data-act="dayNav" data-v="-1" aria-label="Önceki gün">${ico('left','sm')}</button><span>${longDate(k)}</span><button class="ui-iconbtn" data-act="dayNav" data-v="1" aria-label="Sonraki gün" ${isToday ? 'disabled style="opacity:.3"' : ''}>${ico('right','sm')}</button></div>
         <h1 class="ui-h1">${isToday ? `${hello}, ${esc(p.name)}` : 'Geçmiş gün'}</h1>
-      </div>
+      </div></div>
       ${st ? `<span class="td-streak">${ico('flame','sm')}${st} günlük seri</span>` : ''}
     </header>
     ${motive}
@@ -1187,8 +1289,11 @@ function renderReport() {
 
 /* ---- günlük ---- */
 function renderJournal() {
+  const seg = `<div class="wt-seg">${[['notes','Notlar'],['album','Albüm']].map(([v, n]) => `<button data-act="jrView" data-v="${v}" aria-pressed="${ui.jrView === v}">${n}</button>`).join('')}</div>`;
+  if (ui.jrView === 'album') return renderAlbum(seg);
   const entries = Object.entries(S.days).filter(([, d]) => d.note || d.mood).sort((a, b) => b[0].localeCompare(a[0]));
   return `<header class="ui-head"><div><h1 class="ui-h1">Günlük</h1><p class="ui-sub">Motivasyon ve disiplin notların</p></div></header>
+    ${seg}
     <div class="ui-grid2"><div class="ui-col">
     <section class="ui-card"><div class="ui-card-h"><h3 class="ui-card-t"><span style="color:var(--acc)">${ico('target','sm')}</span>Neden başladım?</h3></div>
       <textarea class="ui-ta" id="jr-why" placeholder="Örn: Çocuklarımla parkta yorulmadan koşmak istiyorum.">${esc(S.why)}</textarea>
@@ -1200,6 +1305,35 @@ function renderJournal() {
     </section></div></div>`;
 }
 
+function renderAlbum(seg) {
+  const all = [...S.photos].sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
+  const list = ui.phCat === 'all' ? all : all.filter(p => p.cat === ui.phCat);
+  const prog = all.filter(p => p.cat === 'progress').sort((a, b) => a.date.localeCompare(b.date));
+  const A = prog.find(p => p.id === ui.cmpA) || prog[0], B = prog.find(p => p.id === ui.cmpB) || prog[prog.length - 1];
+  const head = `<header class="ui-head"><div><h1 class="ui-h1">Günlük</h1><p class="ui-sub">Değişimin, öğünlerin ve sporun fotoğrafları</p></div>
+    <button class="ui-btn pri" data-act="photoAdd">${ico('camera','sm')}Ekle</button></header>${seg}`;
+  if (!all.length) return head + `<section class="ui-card"><div class="ui-card-h"><h3 class="ui-card-t"><span style="color:var(--acc)">${ico('camera','sm')}</span>Fotoğraf albümün</h3></div>
+    <p class="ui-empty-note" style="margin-bottom:12px">Haftada bir aynı ışıkta, aynı pozda çekeceğin değişim fotoğrafları tartının gösteremediğini gösterir. Öğün ve spor fotoğraflarını da buraya ekleyebilirsin; öğün ve egzersiz eklerken çektiklerin de burada toplanır.</p>
+    <p class="ui-empty-note" style="margin-bottom:12px">Fotoğrafların yalnızca bu cihazda saklanır, kimseyle paylaşılmaz.</p>
+    <button class="ui-btn pri" data-act="photoAdd">${ico('camera','sm')}İlk fotoğrafı ekle</button></section>`;
+  let cmp = '';
+  if (A && B && A.id !== B.id) {
+    const wa = weightOn(A.date), wb = weightOn(B.date), days = diffDays(A.date, B.date);
+    cmp = `<section class="ui-card"><div class="ui-card-h"><h3 class="ui-card-t"><span style="color:var(--acc)">${ico('trend','sm')}</span>Önce / Sonra</h3><span class="ui-card-meta">${days} gün</span></div>
+      <div class="ph-cmp">${[[A, wa, 'Önce'], [B, wb, 'Sonra']].map(([p, w, n]) => `<figure><button data-act="photoView" data-v="${p.id}" style="display:block;width:100%">${phImg(p.id, 'full')}</button><figcaption><b>${n}</b>${shortDate(p.date)}${w ? ` · ${fmt(w.kg)} kg` : ''}</figcaption></figure>`).join('')}</div>
+      ${wa && wb && wa.kg !== wb.kg ? `<div class="ph-cmp-sum ui-num">${wb.kg < wa.kg ? '−' : '+'}${fmt(Math.abs(wb.kg - wa.kg))} kg</div>` : ''}
+      <p class="ui-empty-note" style="margin-top:8px">Başka fotoğrafları karşılaştırmak için bir değişim fotoğrafına dokun.</p></section>`;
+  }
+  const groups = {};
+  list.forEach(p => { const d = parseKey(p.date), k = `${MONTHS[d.getMonth()]} ${d.getFullYear()}`; (groups[k] ||= []).push(p); });
+  return head + `<div class="ui-grid2"><div class="ui-col">${cmp}
+    <section class="ui-card"><div class="ui-chips">${[['all','Tümü'], ...PHOTO_CATS.map(c => [c.id, c.n])].map(([v, n]) => `<button class="ui-chip" data-act="phCat" data-v="${v}" aria-pressed="${ui.phCat === v}">${n}${v === 'all' ? '' : ` · ${all.filter(p => p.cat === v).length}`}</button>`).join('')}</div>
+      <p class="ui-empty-note" style="margin-top:10px">Fotoğrafların yalnızca bu cihazda saklanır.</p></section>
+    </div><div class="ui-col"><section class="ui-card">
+      ${list.length ? Object.entries(groups).map(([m, ps]) => `<div class="ph-month">${m}</div><div class="ph-grid">${ps.map(p => `<button class="ph-tile" data-act="photoView" data-v="${p.id}">${phImg(p.id)}<i style="background:${PHOTO_CATS.find(c => c.id === p.cat)?.c}"></i></button>`).join('')}</div>`).join('') : '<p class="ui-empty-note">Bu türde fotoğraf yok.</p>'}
+    </section></div></div>`;
+}
+
 /* ---- ayarlar ---- */
 function renderSettings() {
   const p = S.profile, s = S.settings, r = s.rem;
@@ -1208,6 +1342,7 @@ function renderSettings() {
   return `<header class="ui-head"><div><h1 class="ui-h1">Ayarlar</h1><p class="ui-sub">Hafif v${APP_VERSION}</p></div></header>
   <div class="ui-grid2"><div class="ui-col">
   <section class="ui-card"><div class="ui-card-h"><h3 class="ui-card-t">Profil ve hedef</h3><button class="ui-btn ghost sm" data-act="editProfile">Düzenle</button></div>
+    <div class="st-row" style="gap:14px;justify-content:flex-start">${avatar('lg')}<div class="st-row-b"><div class="ui-row" style="gap:4px"><button class="ui-btn sm" data-act="avatarSet">${ico('camera','sm')}${p.photo ? 'Değiştir' : 'Profil fotoğrafı ekle'}</button>${p.photo ? '<button class="ui-btn ghost sm danger" data-act="avatarDel">Kaldır</button>' : ''}</div></div></div>
     <div class="st-row"><div class="st-row-b"><div class="st-row-n">${esc(p.name)}</div><div class="st-row-d">${p.sex === 'm' ? 'Erkek' : 'Kadın'} · ${p.age} yaş · ${p.height} cm · ${ACTIVITY.find(a => a.v === p.activity)?.n || ''} hareket</div></div></div>
     <div class="st-row"><div class="st-row-b"><div class="st-row-n">Başlangıç ${fmt(p.startWeight)} kg → hedef ${fmt(p.goalWeight)} kg</div><div class="st-row-d">${shortDate(p.startDate)} tarihinde başladın</div></div></div>
   </section>
@@ -1251,7 +1386,7 @@ function renderSettings() {
     <div class="ui-chips">${[['auto','Sistem'],['light','Açık'],['dark','Koyu']].map(([v, n]) => `<button class="ui-chip" data-act="theme" data-v="${v}" aria-pressed="${s.theme === v}">${n}</button>`).join('')}</div>
   </section>
   <section class="ui-card"><div class="ui-card-h"><h3 class="ui-card-t">Veriler</h3></div>
-    <p class="ui-empty-note" style="margin-bottom:10px">Tüm kayıtların yalnızca bu cihazda saklanır. Düzenli yedek almanı öneririz.</p>
+    <p class="ui-empty-note" style="margin-bottom:10px">Tüm kayıtların ve fotoğrafların yalnızca bu cihazda saklanır. Düzenli yedek almanı öneririz; yedek dosyası fotoğrafları içermez.</p>
     <div class="ui-row"><button class="ui-btn" data-act="export">Yedek indir</button><button class="ui-btn" data-act="import">Yedekten yükle</button><button class="ui-btn danger" data-act="reset">Tümünü sil</button></div>
   </section></div></div>`;
 }
@@ -1264,6 +1399,7 @@ function renderSheet() {
     const m = MEALS.find(x => x.id === sh.id), x = peekDay(ui.day).meals?.[sh.id] || {};
     t = m.n;
     body = `<div class="ui-field"><label class="ui-label" for="sh-text">Ne yedin?</label><textarea class="ui-ta" id="sh-text" placeholder="Örn: 2 haşlanmış yumurta, 1 dilim beyaz peynir, domates, salatalık, 1 dilim tam buğday ekmeği">${esc(x.text)}</textarea></div>
+      <div class="ph-attach">${sh.photo ? `${phImg(sh.photo)}<button class="ui-btn sm" data-act="sheetPhoto">Değiştir</button><button class="ui-btn ghost sm danger" data-act="sheetPhotoDel">Kaldır</button>` : `<button class="ui-btn sm" data-act="sheetPhoto">${ico('camera','sm')}Fotoğraf ekle</button>`}</div>
       <div id="sh-est">${mealEstHtml(estimateMeal(x.text))}</div>
       <div class="ui-field"><div class="ml-kcal-h"><label class="ui-label" for="sh-kcal">Kalori</label><span class="ml-kcal-tag" id="sh-kcal-tag"></span></div><input class="ui-input" id="sh-kcal" inputmode="numeric" placeholder="kcal" value="${x.kcal || ''}"></div>`;
     foot = `${x.text || x.kcal ? '<button class="ui-btn danger" data-act="mealClear">Temizle</button>' : ''}<button class="ui-btn pri" data-act="mealSave">Kaydet</button>`;
@@ -1274,6 +1410,7 @@ function renderSheet() {
     body = `<div class="ui-field"><span class="ui-label">Tür</span><div class="ui-chips">${WORKOUTS.map(w => `<button class="ui-chip" data-act="woType" data-v="${w.id}" aria-pressed="${sh.wtype === w.id}">${w.n}</button>`).join('')}</div></div>
       <div class="ui-field"><span class="ui-label">Süre</span><div class="ui-row"><button class="ui-btn" data-act="woMin" data-v="-5" aria-label="5 dakika azalt">${ico('minus','sm')}</button><b class="ui-num" style="min-width:70px;text-align:center;font-size:20px;font-weight:600">${sh.min} dk</b><button class="ui-btn" data-act="woMin" data-v="5" aria-label="5 dakika artır">${ico('plus','sm')}</button></div></div>
       <div class="ui-field"><label class="ui-label" for="sh-wnote">Not (isteğe bağlı)</label><input class="ui-input" id="sh-wnote" maxlength="60" placeholder="Örn: 5 km, sahil yolu"></div>
+      <div class="ph-attach">${sh.photo ? `${phImg(sh.photo)}<button class="ui-btn sm" data-act="sheetPhoto">Değiştir</button><button class="ui-btn ghost sm danger" data-act="sheetPhotoDel">Kaldır</button>` : `<button class="ui-btn sm" data-act="sheetPhoto">${ico('camera','sm')}Fotoğraf ekle</button>`}</div>
       <p class="st-note">Tahmini harcama: <b>~${fmtInt(est)} kcal</b> (tür, süre ve kilona göre)</p>`;
     foot = `<button class="ui-btn pri" data-act="woSave">Kaydet</button>`;
   }
@@ -1294,6 +1431,22 @@ function renderSheet() {
       <div class="ms-fields">${MEASURES.map(k => `<div class="ui-field"><label class="ui-label" for="ms-${k.id}">${k.n} (cm)</label><span class="ms-hint">${k.d}</span><input class="ui-input" id="ms-${k.id}" inputmode="decimal" value="${rec[k.id] != null ? fmt(rec[k.id]) : ''}" placeholder="${E[k.id] ? 'Son: ' + fmt(E[k.id].last) : '—'}"></div>`).join('')}</div>
       <p class="st-note">Sabah aç karnına, mezurayı sıkmadan ve yere paralel tutarak ölç. Her seferinde aynı noktadan ölçmek karşılaştırmayı doğru yapar.</p>`;
     foot = `<button class="ui-btn pri" data-act="measureSave">Kaydet</button>`;
+  }
+  if (sh.type === 'photoAdd') {
+    t = 'Fotoğraf ekle';
+    body = `<button class="ph-pick" data-act="sheetPhoto">${sh.photo ? phImg(sh.photo, 'full') : `${ico('camera')}Fotoğraf çek ya da seç`}</button>
+      <div class="ui-field"><span class="ui-label">Tür</span><div class="ui-chips">${PHOTO_CATS.map(c => `<button class="ui-chip" data-act="phAddCat" data-v="${c.id}" aria-pressed="${sh.cat === c.id}">${c.n}</button>`).join('')}</div></div>
+      <div class="ui-fields2"><div class="ui-field"><label class="ui-label" for="ph-date">Tarih</label><input class="ui-input" id="ph-date" type="date" value="${todayKey()}" max="${todayKey()}"></div>
+      <div class="ui-field"><label class="ui-label" for="ph-note">Not</label><input class="ui-input" id="ph-note" maxlength="80" placeholder="İsteğe bağlı"></div></div>
+      ${sh.cat === 'progress' ? '<p class="st-note">İpucu: her hafta aynı yerde, aynı ışıkta ve aynı pozda (önden ve yandan) çek; karşılaştırma çok daha anlamlı olur.</p>' : ''}`;
+    foot = `<button class="ui-btn pri" data-act="photoSave" ${sh.photo ? '' : 'disabled'}>Kaydet</button>`;
+  }
+  if (sh.type === 'photoView') {
+    const ph = S.photos.find(p => p.id === sh.id), cat = PHOTO_CATS.find(c => c.id === ph?.cat), w = ph && weightOn(ph.date);
+    t = ph ? `${cat?.n || 'Fotoğraf'} · ${shortDate(ph.date)}` : 'Fotoğraf';
+    body = ph ? `<div class="ph-view">${phImg(ph.id, 'full')}</div>
+      <p style="margin:10px 0 0;color:var(--ink2);font-size:var(--fs-sec)">${longDate(ph.date)}${w && ph.cat === 'progress' ? ` · ${fmt(w.kg)} kg` : ''}${ph.note ? `<br><span style="color:var(--ink)">${esc(ph.note)}</span>` : ''}</p>` : '';
+    foot = ph ? `<button class="ui-btn danger" data-act="photoDel" data-v="${ph.id}">${ico('trash','sm')}Sil</button>${ph.cat === 'progress' ? `<button class="ui-btn" data-act="cmpSet" data-v="A">Önce olarak seç</button><button class="ui-btn" data-act="cmpSet" data-v="B">Sonra olarak seç</button>` : ''}` : '';
   }
   if (sh.type === 'steps') {
     t = 'Adım sayısı';
@@ -1353,7 +1506,8 @@ function syncMealKcal() {
   tag.innerHTML = ui.sheet.manual ? (E.total != null && +inp.value !== E.total ? `Elle girildi · <button class="ui-btn ghost sm" style="height:auto;padding:0" data-act="mealUseEst">Tahmini kullan</button>` : 'Elle girildi') : (E.total != null ? 'Tahmini · istersen değiştir' : '');
 }
 const openSheet = s => { ui.sheet = s; render(); setTimeout(() => $('.ui-sheet input:not([type=date]), .ui-sheet textarea')?.focus({preventScroll: true}), 60); };
-const closeSheet = () => { ui.sheet = null; render(); };
+// Kaydedilmeden kapanan pencerede yeni eklenen fotoğrafı depodan temizle
+const closeSheet = () => { const sh = ui.sheet; if (sh?.photo && sh.photo !== sh.origPhoto && !sh.saved) PDB.del(sh.photo).catch(() => {}); ui.sheet = null; render(); };
 let confirmFn = null;
 function confirmBox(title, text, yes, fn, danger = true) { confirmFn = fn; openSheet({type: 'confirm', title, text, yes, danger}); }
 
@@ -1573,15 +1727,26 @@ document.addEventListener('click', e => {
     case 'chip': el.parentElement.querySelectorAll('.ui-chip').forEach(c => c.setAttribute('aria-pressed', c === el)); break;
     case 'dayNav': { const n = addDays(ui.day, +v); if (n <= todayKey()) { ui.day = n; render(); } break; }
     case 'water': { const x = d(); x.water = Math.max(0, (x.water || 0) + (+v) * S.settings.glass); save(); render(); if (+v > 0 && x.water >= waterGoal() && x.water - S.settings.glass < waterGoal()) toast('Günlük su hedefini tamamladın'); break; }
-    case 'meal': { const x = peekDay(ui.day).meals?.[v]; openSheet({type: 'meal', id: v, manual: !!(x?.kcal && !x.est)}); syncMealKcal(); break; }
+    case 'meal': { const x = peekDay(ui.day).meals?.[v]; openSheet({type: 'meal', id: v, manual: !!(x?.kcal && !x.est), photo: x?.photo || null, origPhoto: x?.photo || null}); syncMealKcal(); break; }
     case 'mealUseEst': ui.sheet.manual = false; syncMealKcal(); break;
-    case 'mealSave': { const text = $('#sh-text').value.trim(), kcal = Math.round(num($('#sh-kcal').value) || 0) || null; d().meals[ui.sheet.id] = {text, kcal, est: !!kcal && !ui.sheet.manual}; save(); closeSheet(); break; }
-    case 'mealClear': delete d().meals[ui.sheet.id]; save(); closeSheet(); break;
+    case 'mealSave': {
+      const sh = ui.sheet, text = $('#sh-text').value.trim(), kcal = Math.round(num($('#sh-kcal').value) || 0) || null;
+      if (sh.origPhoto && sh.origPhoto !== sh.photo) removePhoto(sh.origPhoto);
+      if (sh.photo) upsertPhotoMeta(sh.photo, {date: ui.day, cat: 'meal', note: [MEALS.find(m => m.id === sh.id)?.n, text].filter(Boolean).join(': ')});
+      d().meals[sh.id] = {text, kcal, est: !!kcal && !sh.manual, photo: sh.photo || undefined};
+      sh.saved = true; save(); closeSheet(); break;
+    }
+    case 'mealClear': { const sh = ui.sheet; if (sh.origPhoto) removePhoto(sh.origPhoto); delete d().meals[sh.id]; sh.saved = true; save(); closeSheet(); break; }
     case 'addWorkout': openSheet({type: 'workout', wtype: 'walk', min: 30}); break;
     case 'woType': ui.sheet.wtype = v; keepSheet(); break;
     case 'woMin': ui.sheet.min = Math.max(5, Math.min(300, ui.sheet.min + +v)); keepSheet(); break;
-    case 'woSave': { const s = ui.sheet; d().workouts.push({id: uid(), type: s.wtype, min: s.min, kcal: woKcal(s.wtype, s.min, weightOn(ui.day)?.kg), note: $('#sh-wnote').value.trim()}); save(); closeSheet(); break; }
-    case 'delWorkout': confirmBox('Egzersizi sil', 'Bu egzersiz kaydı silinecek.', 'Sil', () => { const x = d(); x.workouts = x.workouts.filter(w => w.id !== v); save(); }); break;
+    case 'woSave': {
+      const s = ui.sheet, note = $('#sh-wnote').value.trim();
+      if (s.photo) upsertPhotoMeta(s.photo, {date: ui.day, cat: 'workout', note: [WORKOUTS.find(w => w.id === s.wtype)?.n + ` ${s.min} dk`, note].filter(Boolean).join(' · ')});
+      d().workouts.push({id: uid(), type: s.wtype, min: s.min, kcal: woKcal(s.wtype, s.min, weightOn(ui.day)?.kg), note, photo: s.photo || undefined});
+      s.saved = true; save(); closeSheet(); break;
+    }
+    case 'delWorkout': confirmBox('Egzersizi sil', 'Bu egzersiz kaydı ve varsa fotoğrafı silinecek.', 'Sil', () => { const x = d(), w = x.workouts.find(w => w.id === v); if (w?.photo) removePhoto(w.photo); x.workouts = x.workouts.filter(w => w.id !== v); save(); }); break;
     case 'steps': openSheet({type: 'steps'}); break;
     case 'stepsSave': { const n = num($('#sh-steps').value); d().steps = n == null ? null : Math.round(n); save(); closeSheet(); break; }
     case 'habit': { const x = d(); x.habits[v] = !x.habits[v]; save(); render(); break; }
@@ -1599,6 +1764,26 @@ document.addEventListener('click', e => {
     case 'delWeight': confirmBox('Tartıyı sil', `${longDate(v)} tarihli tartı silinecek.`, 'Sil', () => { S.weights = S.weights.filter(w => w.date !== v); save(); }); break;
     case 'range': ui.range = +v; render(); break;
     case 'wtView': ui.wtView = v; render(); break;
+    case 'jrView': ui.jrView = v; render(); break;
+    case 'phCat': ui.phCat = v; render(); break;
+    case 'avatarSet': pickImage(f => photoBusy(async () => { const {canvas} = await shrinkImage(f, 256, true); S.profile.photo = canvas.toDataURL('image/jpeg', .82); save(); render(); toast('Profil fotoğrafı güncellendi'); })); break;
+    case 'avatarDel': delete S.profile.photo; save(); render(); break;
+    case 'sheetPhoto': { const sh = ui.sheet; pickImage(f => photoBusy(async () => { const id = await storePhoto(f); if (ui.sheet !== sh) { PDB.del(id); return; } if (sh.photo && sh.photo !== sh.origPhoto) PDB.del(sh.photo).catch(() => {}); sh.photo = id; keepSheet(); })); break; }
+    case 'sheetPhotoDel': { const sh = ui.sheet; if (sh.photo && sh.photo !== sh.origPhoto) PDB.del(sh.photo).catch(() => {}); sh.photo = null; keepSheet(); break; }
+    case 'photoAdd': openSheet({type: 'photoAdd', cat: ui.phCat !== 'all' ? ui.phCat : 'progress', photo: null}); break;
+    case 'phAddCat': ui.sheet.cat = v; keepSheet(); break;
+    case 'photoSave': {
+      const sh = ui.sheet; if (!sh.photo) return;
+      upsertPhotoMeta(sh.photo, {date: $('#ph-date').value || todayKey(), cat: sh.cat, note: $('#ph-note').value.trim()});
+      sh.saved = true; ui.tab = 'journal'; ui.jrView = 'album'; save(); closeSheet(); break;
+    }
+    case 'photoView': openSheet({type: 'photoView', id: v}); break;
+    case 'cmpSet': { const id = ui.sheet.id; if (v === 'A') ui.cmpA = id; else ui.cmpB = id; closeSheet(); break; }
+    case 'photoDel': confirmBox('Fotoğrafı sil', 'Bu fotoğraf kalıcı olarak silinecek.', 'Sil', () => {
+      // Öğün/egzersiz bağlantısını da kaldır
+      Object.values(S.days).forEach(dd => { Object.values(dd.meals || {}).forEach(m => { if (m.photo === v) delete m.photo; }); (dd.workouts || []).forEach(w => { if (w.photo === v) delete w.photo; }); });
+      removePhoto(v); save();
+    }); break;
     case 'mKey': ui.mKey = v; render(); break;
     case 'addMeasure': openSheet({type: 'measure', date: todayKey()}); break;
     case 'editMeasure': openSheet({type: 'measure', date: v, edit: true}); break;
@@ -1656,17 +1841,18 @@ document.addEventListener('click', e => {
       if (!data?.profile || !data.days) { toast('Bu bir Hafif yedeği değil'); return; }
       confirmBox('Yedekten yükle', 'Bu cihazdaki mevcut kayıtların yedektekilerle değiştirilecek.', 'Yükle', () => { localStorage.setItem(STORE_KEY, JSON.stringify(data)); load(); syncReminders(); toast('Yedek yüklendi'); }, false);
     }); break;
-    case 'reset': confirmBox('Tüm verileri sil', 'Profilin, tartıların, öğünlerin ve notların bu cihazdan kalıcı olarak silinecek. Geri alınamaz.', 'Hepsini sil', () => { localStorage.removeItem(STORE_KEY); load(); ui.tab = 'today'; post({cmd: 'notify', items: []}); }); break;
+    case 'reset': confirmBox('Tüm verileri sil', 'Profilin, tartıların, öğünlerin, notların ve fotoğrafların bu cihazdan kalıcı olarak silinecek. Geri alınamaz.', 'Hepsini sil', () => { localStorage.removeItem(STORE_KEY); PDB.clear().catch(() => {}); load(); ui.tab = 'today'; post({cmd: 'notify', items: []}); }); break;
     case 'confirmYes': { const fn = confirmFn; confirmFn = null; ui.sheet = null; fn?.(); render(); break; }
     case 'closeSheet': case 'sheetBg': closeSheet(); break;
   }
 });
 // Alt pencere açıkken yazılanı kaybetmeden yeniden çiz
 function keepSheet() {
-  const note = $('#sh-wnote')?.value;
+  const vals = [...document.querySelectorAll('.ui-sheet input[id], .ui-sheet textarea[id]')].map(e => [e.id, e.value]);
   const sc = $('.ui-sheet')?.scrollTop;
   render();
-  if (note != null) $('#sh-wnote').value = note;
+  vals.forEach(([id, v]) => { const e = document.getElementById(id); if (e && !e.disabled) e.value = v; });
+  if (ui.sheet?.type === 'meal') syncMealKcal(); // tahmin kutusu geri yüklenen metne göre yenilensin
   if (sc) $('.ui-sheet').scrollTop = sc;
   $('.ui-sheet-bg').style.animation = 'none'; $('.ui-sheet').style.animation = 'none';
 }
