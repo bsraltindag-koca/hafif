@@ -199,6 +199,13 @@ input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and
 .av{width:40px;height:40px;border-radius:50%;flex:none;overflow:hidden;background:var(--hero);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:18px;box-shadow:0 0 0 2px var(--card),0 0 0 3.5px color-mix(in srgb,var(--acc) 45%,transparent)}
 .av img{width:100%;height:100%;object-fit:cover;display:block}
 .av.lg{width:72px;height:72px;font-size:28px}
+.av-stage{position:relative;width:min(280px,72vw);aspect-ratio:1;margin:4px auto 14px;border-radius:18px;overflow:hidden;background:#000;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
+.av-stage:active{cursor:grabbing}
+.av-stage img{position:absolute;left:0;top:0;transform-origin:0 0;max-width:none;pointer-events:none;-webkit-user-drag:none}
+.av-stage::after{content:"";position:absolute;inset:6%;border-radius:50%;box-shadow:0 0 0 999px rgba(10,14,20,.55),inset 0 0 0 2px rgba(255,255,255,.9);pointer-events:none}
+.av-zoom{display:flex;align-items:center;gap:10px;color:var(--ink2);max-width:320px;margin:0 auto}
+.av-zoom input{flex:1;accent-color:var(--acc)}
+.av-hint{text-align:center;color:var(--ink2);font-size:var(--fs-sec);margin:0 0 12px}
 .td-right{display:flex;align-items:center;gap:8px;flex:none;align-self:center}
 .ph-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
 .ph-tile{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;background:var(--bg)}
@@ -392,7 +399,7 @@ input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and
 <div id="app"></div>
 <script>
 'use strict';
-const APP_VERSION = '2.5';
+const APP_VERSION = '2.6';
 const STORE_KEY = 'hafif.v1';
 
 /* ---------------- yardımcılar ---------------- */
@@ -893,6 +900,65 @@ function upsertPhotoMeta(id, meta) {
   const ex = S.photos.find(p => p.id === id);
   if (ex) Object.assign(ex, meta); else S.photos.push({id, ...meta});
 }
+/* Profil fotoğrafı kırpma: görüntü kare sahnede sürüklenir/yakınlaştırılır, halka içi kaydedilir.
+   Konum görüntüye göre oranla tutulur: cx, cy (0–1 merkez), z (kaplama ölçeğinin katı). */
+const AV = {img: null, url: null, blob: null, st: null};
+function avStageSize() { return $('.av-stage')?.clientWidth || 280; }
+function avClamp() {
+  const st = AV.st, size = avStageSize(), base = Math.max(size / st.iw, size / st.ih), sc = base * st.z;
+  const W = st.iw * sc, H = st.ih * sc;
+  st.cx = Math.min(1 - size / 2 / W, Math.max(size / 2 / W, st.cx));
+  st.cy = Math.min(1 - size / 2 / H, Math.max(size / 2 / H, st.cy));
+  return {size, sc, W, H};
+}
+function avApply() {
+  const img = $('#av-img'); if (!img || !AV.st) return;
+  const {size, W, H} = avClamp();
+  img.style.width = W + 'px'; img.style.height = H + 'px';
+  img.style.transform = `translate(${size / 2 - AV.st.cx * W}px, ${size / 2 - AV.st.cy * H}px)`;
+  const z = $('#av-z'); if (z && +z.value !== AV.st.z) z.value = AV.st.z;
+}
+function avZoom(z) { AV.st.z = Math.min(4, Math.max(1, z)); avApply(); }
+// Kaynak bloktan kırpma penceresini açar; crop: önceden kaydedilmiş konum
+async function avOpen(blob, crop) {
+  if (AV.url) URL.revokeObjectURL(AV.url);
+  AV.blob = blob; AV.url = URL.createObjectURL(blob);
+  AV.img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = AV.url; });
+  AV.st = {iw: AV.img.naturalWidth, ih: AV.img.naturalHeight, cx: crop?.cx ?? .5, cy: crop?.cy ?? .45, z: crop?.z ?? 1};
+  document.querySelector('.ui-toast')?.remove();
+  openSheet({type: 'avatarCrop'});
+}
+async function avSave() {
+  const st = AV.st, {size: stage, sc} = avClamp(), out = 320, c = document.createElement('canvas');
+  c.width = c.height = out;
+  // Halka sahnenin %88'i (her kenardan %6 içeride): kayıt tam halkanın gördüğü alan
+  const side = stage * .88 / sc, sx = st.cx * st.iw - side / 2, sy = st.cy * st.ih - side / 2;
+  c.getContext('2d').drawImage(AV.img, sx, sy, side, side, 0, 0, out, out);
+  S.profile.photo = c.toDataURL('image/jpeg', .85);
+  S.profile.photoCrop = {cx: st.cx, cy: st.cy, z: st.z};
+  try { await PDB.put('avatar-src', {full: AV.blob}); } catch {}
+  save(); ui.sheet = null; render(); toast('Profil fotoğrafı güncellendi');
+}
+// Sürükleme ve iki parmakla yakınlaştırma
+const avPtr = new Map(); let avPinch = null;
+document.addEventListener('pointerdown', e => {
+  const stg = e.target.closest?.('.av-stage'); if (!stg || !AV.st) return;
+  stg.setPointerCapture(e.pointerId); avPtr.set(e.pointerId, {x: e.clientX, y: e.clientY});
+  if (avPtr.size === 2) { const [a, b] = [...avPtr.values()]; avPinch = {d: Math.hypot(a.x - b.x, a.y - b.y), z: AV.st.z}; }
+});
+document.addEventListener('pointermove', e => {
+  if (!avPtr.has(e.pointerId) || !AV.st) return;
+  const prev = avPtr.get(e.pointerId), cur = {x: e.clientX, y: e.clientY};
+  avPtr.set(e.pointerId, cur);
+  if (avPtr.size === 2 && avPinch) { const [a, b] = [...avPtr.values()]; avZoom(avPinch.z * Math.hypot(a.x - b.x, a.y - b.y) / avPinch.d); return; }
+  const {W, H} = avClamp();
+  AV.st.cx -= (cur.x - prev.x) / W; AV.st.cy -= (cur.y - prev.y) / H; avApply();
+});
+const avUp = e => { avPtr.delete(e.pointerId); if (avPtr.size < 2) avPinch = null; };
+document.addEventListener('pointerup', avUp); document.addEventListener('pointercancel', avUp);
+document.addEventListener('wheel', e => { if (!e.target.closest?.('.av-stage') || !AV.st) return; e.preventDefault(); avZoom(AV.st.z * (e.deltaY < 0 ? 1.08 : 1 / 1.08)); }, {passive: false});
+window.addEventListener('resize', () => avApply());
+
 const avatar = (cls = '') => `<span class="av ${cls}">${S.profile?.photo ? `<img src="${S.profile.photo}" alt="">` : esc((S.profile?.name || '?').trim().charAt(0).toLocaleUpperCase('tr'))}</span>`;
 function photoBusy(fn) { toast('Fotoğraf hazırlanıyor…'); return fn().catch(e => toast(e?.name === 'QuotaExceededError' ? 'Cihazda yer kalmadı' : 'Fotoğraf kaydedilemedi: bu tarayıcı fotoğraf saklamaya izin vermiyor olabilir')); }
 
@@ -1077,6 +1143,7 @@ function render() {
   window.scrollTo(0, scrollY);
   drawCharts();
   hydratePhotos();
+  if ($('#av-img')) { const i = $('#av-img'); i.complete ? avApply() : i.addEventListener('load', avApply, {once: true}); }
 }
 const logo = s => `<svg width="${s}" height="${s}" viewBox="0 0 40 40" aria-hidden="true"><defs><linearGradient id="lg${s}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--p1)"/><stop offset="1" stop-color="var(--p2)"/></linearGradient></defs><rect width="40" height="40" rx="11" fill="url(#lg${s})"/><path d="M12 27c0-9 6-15 16-15 0 10-6 15-14 15" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 27c3-4 6-6.5 9.5-8" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg>`;
 
@@ -1487,7 +1554,7 @@ function renderSettings() {
   return `<header class="ui-head"><div><h1 class="ui-h1">Ayarlar</h1><p class="ui-sub">Hafif v${APP_VERSION}</p></div></header>
   <div class="ui-grid2"><div class="ui-col">
   <section class="ui-card"><div class="ui-card-h"><h3 class="ui-card-t">Profil ve hedef</h3><button class="ui-btn ghost sm" data-act="editProfile">Düzenle</button></div>
-    <div class="st-row" style="gap:14px;justify-content:flex-start">${avatar('lg')}<div class="st-row-b"><div class="ui-row" style="gap:4px"><button class="ui-btn sm" data-act="avatarSet">${ico('camera','sm')}${p.photo ? 'Değiştir' : 'Profil fotoğrafı ekle'}</button>${p.photo ? '<button class="ui-btn ghost sm danger" data-act="avatarDel">Kaldır</button>' : ''}</div></div></div>
+    <div class="st-row" style="gap:14px;justify-content:flex-start">${avatar('lg')}<div class="st-row-b"><div class="ui-row" style="gap:4px"><button class="ui-btn sm" data-act="avatarSet">${ico('camera','sm')}${p.photo ? 'Değiştir' : 'Profil fotoğrafı ekle'}</button>${p.photo ? `<button class="ui-btn sm" data-act="avatarAdjust">Konumu ayarla</button><button class="ui-btn ghost sm danger" data-act="avatarDel">Kaldır</button>` : ''}</div></div></div>
     <div class="st-row"><div class="st-row-b"><div class="st-row-n">${esc(p.name)}</div><div class="st-row-d">${p.sex === 'm' ? 'Erkek' : 'Kadın'} · ${ageOf(p)} yaş${p.birth ? ` (${shortDate(p.birth)})` : ''} · ${p.height} cm · ${ACTIVITY.find(a => a.v === p.activity)?.n || ''} hareket</div></div></div>
     <div class="st-row"><div class="st-row-b"><div class="st-row-n">Başlangıç ${fmt(p.startWeight)} kg → hedef ${fmt(p.goalWeight)} kg</div><div class="st-row-d">${shortDate(p.startDate)} tarihinde başladın</div></div></div>
     ${p.birth ? '' : `<p class="st-note">${ico('cake','sm')} Doğum tarihini eklersen yaşın her yıl kendiliğinden güncellenir, doğum gününde de seni küçük bir sürprizle karşılarız. <button class="ui-btn ghost sm" data-act="editProfile" style="padding:0;height:auto">Ekle</button></p>`}
@@ -1578,6 +1645,13 @@ function renderSheet() {
       <p class="st-note">Sabah aç karnına, mezurayı sıkmadan ve yere paralel tutarak ölç. Her seferinde aynı noktadan ölçmek karşılaştırmayı doğru yapar.</p>`;
     foot = `<button class="ui-btn pri" data-act="measureSave">Kaydet</button>`;
   }
+  if (sh.type === 'avatarCrop') {
+    t = 'Fotoğrafı ayarla';
+    body = `<p class="av-hint">Sürükleyerek yüzünü halkanın ortasına getir</p>
+      <div class="av-stage"><img id="av-img" src="${AV.url}" alt="" draggable="false"></div>
+      <div class="av-zoom"><button class="ui-iconbtn" data-act="avZoom" data-v="-1" aria-label="Uzaklaştır">${ico('minus','sm')}</button><input type="range" id="av-z" min="1" max="4" step="0.01" value="${AV.st.z}" aria-label="Yakınlaştır"><button class="ui-iconbtn" data-act="avZoom" data-v="1" aria-label="Yakınlaştır">${ico('plus','sm')}</button></div>`;
+    foot = `<button class="ui-btn" data-act="closeSheet">Vazgeç</button><button class="ui-btn pri" data-act="avSave">Kaydet</button>`;
+  }
   if (sh.type === 'photoAdd') {
     t = 'Fotoğraf ekle';
     body = `<button class="ph-pick" data-act="sheetPhoto">${sh.photo ? phImg(sh.photo, 'full') : `${ico('camera')}Fotoğraf çek ya da seç`}</button>
@@ -1651,7 +1725,7 @@ function syncMealKcal() {
   if (!ui.sheet.manual) inp.value = E.total || '';
   tag.innerHTML = ui.sheet.manual ? (E.total != null && +inp.value !== E.total ? `Elle girildi · <button class="ui-btn ghost sm" style="height:auto;padding:0" data-act="mealUseEst">Tahmini kullan</button>` : 'Elle girildi') : (E.total != null ? 'Tahmini · istersen değiştir' : '');
 }
-const openSheet = s => { ui.sheet = s; render(); setTimeout(() => $('.ui-sheet input:not([type=date]), .ui-sheet textarea')?.focus({preventScroll: true}), 60); };
+const openSheet = s => { ui.sheet = s; render(); setTimeout(() => $('.ui-sheet input:not([type=date]):not([type=range]), .ui-sheet textarea')?.focus({preventScroll: true}), 60); };
 // Kaydedilmeden kapanan pencerede yeni eklenen fotoğrafı depodan temizle
 const closeSheet = () => { const sh = ui.sheet; if (sh?.photo && sh.photo !== sh.origPhoto && !sh.saved) PDB.del(sh.photo).catch(() => {}); ui.sheet = null; render(); };
 let confirmFn = null;
@@ -1915,8 +1989,11 @@ document.addEventListener('click', e => {
     case 'obAct': ui.ob.d.activity = +v; render(); break;
     case 'jrView': ui.jrView = v; render(); break;
     case 'phCat': ui.phCat = v; render(); break;
-    case 'avatarSet': pickImage(f => photoBusy(async () => { const {canvas} = await shrinkImage(f, 256, true); S.profile.photo = canvas.toDataURL('image/jpeg', .82); save(); render(); toast('Profil fotoğrafı güncellendi'); })); break;
-    case 'avatarDel': delete S.profile.photo; save(); render(); break;
+    case 'avatarSet': pickImage(f => photoBusy(async () => { const {blob} = await shrinkImage(f, 1280); await avOpen(blob); })); break;
+    case 'avatarAdjust': (async () => { try { const rec = await PDB.get('avatar-src'); if (rec?.full) return avOpen(rec.full, S.profile.photoCrop); } catch {} toast('Konumu ayarlamak için fotoğrafı yeniden seç'); })(); break;
+    case 'avZoom': avZoom(AV.st.z + +v * .25); break;
+    case 'avSave': avSave(); break;
+    case 'avatarDel': delete S.profile.photo; delete S.profile.photoCrop; PDB.del('avatar-src').catch(() => {}); save(); render(); break;
     case 'sheetPhoto': { const sh = ui.sheet; pickImage(f => photoBusy(async () => { const id = await storePhoto(f); if (ui.sheet !== sh) { PDB.del(id); return; } if (sh.photo && sh.photo !== sh.origPhoto) PDB.del(sh.photo).catch(() => {}); sh.photo = id; keepSheet(); })); break; }
     case 'sheetPhotoDel': { const sh = ui.sheet; if (sh.photo && sh.photo !== sh.origPhoto) PDB.del(sh.photo).catch(() => {}); sh.photo = null; keepSheet(); break; }
     case 'photoAdd': openSheet({type: 'photoAdd', cat: ui.phCat !== 'all' ? ui.phCat : 'progress', photo: null}); break;
@@ -2021,6 +2098,7 @@ document.addEventListener('submit', e => {
 let noteT;
 document.addEventListener('input', e => {
   const t = e.target;
+  if (t.id === 'av-z') avZoom(+t.value);
   if (t.dataset.ob && ui.ob) {
     ui.ob.d[t.dataset.ob] = t.value;
     if (ui.ob.err) { ui.ob.err = ''; const er = $('.ob-err'); if (er) er.textContent = ''; }
