@@ -317,7 +317,7 @@ svg{display:block}
 <div id="app"></div>
 <script>
 'use strict';
-const APP_VERSION = '1.7';
+const APP_VERSION = '1.8';
 const STORE_KEY = 'hafif.v1';
 
 /* ---------------- yardımcılar ---------------- */
@@ -724,9 +724,12 @@ function defaultState() {
 let S;
 function load() {
   try { S = JSON.parse(localStorage.getItem(STORE_KEY)) || defaultState(); } catch { S = defaultState(); }
-  const d = defaultState();
-  S.settings = Object.assign(d.settings, S.settings || {});
-  S.settings.rem = Object.assign(d.settings.rem, S.settings.rem || {});
+  // Eski sürümlerden gelen kayıtlara yeni ayarların varsayılanlarını ekle (kayıtlı değerler korunur).
+  // Varsayılanlar ayrı bir kopyadan okunur; aksi halde birleştirme kendi üzerine yazar.
+  const d = defaultState(), saved = S.settings || {}, savedRem = saved.rem || {};
+  S.settings = {...d.settings, ...saved};
+  S.settings.rem = {};
+  for (const k of Object.keys(d.settings.rem)) S.settings.rem[k] = {...d.settings.rem[k], ...(savedRem[k] || {})};
   S.days ||= {}; S.weights ||= []; S.habits ||= d.habits; S.measures ||= [];
   // v1.5 öncesi tartıya girilen bel ölçüsünü ölçüler listesine taşı
   S.weights.forEach(w => { if (w.waist) { const m = S.measures.find(x => x.date === w.date); if (m) m.waist ??= w.waist; else S.measures.push({date: w.date, waist: w.waist}); } delete w.waist; });
