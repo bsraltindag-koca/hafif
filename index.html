@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#F5F3EE">
+<meta name="theme-color" content="#3657E0">
 <title>Hafif</title>
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -11,8 +11,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <style>
 :root{
-  /* renk paleti: Nane (varsayılan) / Mercan / Okyanus */
-  --p1:#0E9F77; --p2:#3CCB9E; --p1d:#4FD1A5;
+  /* renk paleti: Okyanus (varsayılan) / Nane / Mercan */
+  --p1:#3657E0; --p2:#3FA9FF; --p1d:#8AA2FF;
   --card:#FFFFFF; --ink:#18201C; --ink2:#5F6863; --ink3:#97A09A;
   --acc:var(--p1);
   --bg:color-mix(in srgb,var(--p1) 5%,#F6F6F2);
@@ -26,7 +26,7 @@
   --r:18px;
 }
 :root[data-palette="coral"]{--p1:#EF5B4C; --p2:#FF9A6B; --p1d:#FF8A78}
-:root[data-palette="ocean"]{--p1:#3657E0; --p2:#3FA9FF; --p1d:#8AA2FF}
+:root[data-palette="mint"]{--p1:#0E9F77; --p2:#3CCB9E; --p1d:#4FD1A5}
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
     --card:#1A1F1D; --ink:#EEF2EF; --ink2:#A5ADA8; --ink3:#6E7772;
@@ -340,7 +340,7 @@ svg{display:block}
 <div id="app"></div>
 <script>
 'use strict';
-const APP_VERSION = '2.0';
+const APP_VERSION = '2.1';
 const STORE_KEY = 'hafif.v1';
 
 /* ---------------- yardımcılar ---------------- */
@@ -730,7 +730,7 @@ function defaultState() {
     why: '',
     habits: DEFAULT_HABITS.map(n => ({id: uid(), n})),
     settings: {
-      theme: 'auto', palette: 'mint', waterGoal: null, glass: 250, kcalGoal: null, exGoal: 30, stepGoal: 8000,
+      theme: 'auto', palette: 'ocean', waterGoal: null, glass: 250, kcalGoal: null, exGoal: 30, stepGoal: 8000,
       health: false,
       rem: {
         water: {on: true, from: '09:00', to: '21:00', every: 2},
@@ -755,6 +755,8 @@ function load() {
   S.settings = {...d.settings, ...saved};
   S.settings.rem = {};
   for (const k of Object.keys(d.settings.rem)) S.settings.rem[k] = {...d.settings.rem[k], ...(savedRem[k] || {})};
+  // v2.1: varsayılan renk Nane'den Okyanus'a geçti; renk bilerek seçilmemişse yeni varsayılanı al
+  if (!S.settings.paletteChosen && S.settings.palette === 'mint') S.settings.palette = 'ocean';
   S.days ||= {}; S.weights ||= []; S.habits ||= d.habits; S.measures ||= []; S.photos ||= [];
   // v1.5 öncesi tartıya girilen bel ölçüsünü ölçüler listesine taşı
   S.weights.forEach(w => { if (w.waist) { const m = S.measures.find(x => x.date === w.date); if (m) m.waist ??= w.waist; else S.measures.push({date: w.date, waist: w.waist}); } delete w.waist; });
@@ -965,7 +967,7 @@ function toast(t) {
   const el = document.createElement('div'); el.className = 'ui-toast'; el.textContent = t;
   document.body.appendChild(el); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.remove(), 2800);
 }
-function applyTheme() { const pl = S.settings.palette; if (pl && pl !== 'mint') document.documentElement.setAttribute('data-palette', pl); else document.documentElement.removeAttribute('data-palette'); const t = S.settings.theme; if (t === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', t); }
+function applyTheme() { const pl = S.settings.palette; if (pl && pl !== 'ocean') document.documentElement.setAttribute('data-palette', pl); else document.documentElement.removeAttribute('data-palette'); const t = S.settings.theme; if (t === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', t); }
 
 /* ---------------- çizim ---------------- */
 // Bildirim izni bazı tarayıcılarda/çerçevelerde okunurken hata verebilir
@@ -1381,7 +1383,7 @@ function renderSettings() {
   </section>
   <section class="ui-card"><div class="ui-card-h"><h3 class="ui-card-t">Görünüm</h3></div>
     <span class="ui-label">Renk</span>
-    <div class="st-pal">${[['mint','Nane','#0E9F77','#3CCB9E'],['coral','Mercan','#EF5B4C','#FF9A6B'],['ocean','Okyanus','#3657E0','#3FA9FF']].map(([v, n, a, b]) => `<button class="st-pal-b" data-act="palette" data-v="${v}" aria-pressed="${(s.palette || 'mint') === v}"><i style="background:linear-gradient(135deg,${a},${b})"></i>${n}</button>`).join('')}</div>
+    <div class="st-pal">${[['ocean','Okyanus','#3657E0','#3FA9FF'],['mint','Nane','#0E9F77','#3CCB9E'],['coral','Mercan','#EF5B4C','#FF9A6B']].map(([v, n, a, b]) => `<button class="st-pal-b" data-act="palette" data-v="${v}" aria-pressed="${(s.palette || 'ocean') === v}"><i style="background:linear-gradient(135deg,${a},${b})"></i>${n}</button>`).join('')}</div>
     <span class="ui-label" style="margin-top:12px">Tema</span>
     <div class="ui-chips">${[['auto','Sistem'],['light','Açık'],['dark','Koyu']].map(([v, n]) => `<button class="ui-chip" data-act="theme" data-v="${v}" aria-pressed="${s.theme === v}">${n}</button>`).join('')}</div>
   </section>
@@ -1830,7 +1832,7 @@ document.addEventListener('click', e => {
     case 'askNotif': try { Promise.resolve(Notification.requestPermission()).then(() => render(), () => toast('Bildirim izni istenemedi')); } catch { toast('Bu ortamda bildirim izni istenemiyor'); } break;
     case 'delHabit': { const h = S.habits.find(x => x.id === v); confirmBox('Maddeyi sil', `“${esc(h.n)}” listeden çıkarılacak.`, 'Sil', () => { S.habits = S.habits.filter(x => x.id !== v); save(); }); break; }
     case 'theme': S.settings.theme = v; save(); render(); break;
-    case 'palette': S.settings.palette = v; save(); render(); break;
+    case 'palette': S.settings.palette = v; S.settings.paletteChosen = true; save(); render(); break;
     case 'export': {
       if (NATIVE) { post({cmd: 'share', name: `hafif-yedek-${todayKey()}.json`, text: JSON.stringify(S, null, 1)}); break; }
       const blob = new Blob([JSON.stringify(S, null, 1)], {type: 'application/json'});
