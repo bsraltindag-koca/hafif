@@ -291,7 +291,7 @@ svg{display:block}
 <div id="app"></div>
 <script>
 'use strict';
-const APP_VERSION = '1.3';
+const APP_VERSION = '1.4';
 const STORE_KEY = 'hafif.v1';
 
 /* ---------------- yardımcılar ---------------- */
@@ -1184,6 +1184,23 @@ function renderSheet() {
       <div class="ui-field"><span class="ui-label">Hareket düzeyi</span><div class="ui-chips" data-group="activity">${ACTIVITY.map(a => `<button type="button" class="ui-chip" data-act="chip" data-v="${a.v}" aria-pressed="${p.activity === a.v}">${a.n}</button>`).join('')}</div></div>`;
     foot = `<button class="ui-btn pri" data-act="profileSave">Kaydet</button>`;
   }
+  if (sh.type === 'csv') {
+    const {T, map} = sh, list = buildWeights(T, map);
+    const opt = (sel, none) => `${none ? `<option value="-1" ${sel < 0 ? 'selected' : ''}>${none}</option>` : (sel < 0 ? '<option value="-1" selected>Seç…</option>' : '')}${T.headers.map((h, i) => { const ex = T.data.find(r => r[i])?.[i] || ''; return `<option value="${i}" ${i === sel ? 'selected' : ''}>${esc(h)}${ex ? ' — örn. ' + esc(String(ex).slice(0, 22)) : ''}</option>`; }).join('')}`;
+    t = 'Tartı dosyası';
+    body = `<p class="ui-empty-note" style="margin-bottom:12px">${T.data.length} satır okundu. ${sh.auto ? 'Sütunları otomatik buldum; doğru değilse aşağıdan değiştir.' : 'Tarih ve kilo sütununu otomatik bulamadım; aşağıdan seç.'}</p>
+      <div class="ui-field"><label class="ui-label" for="csv-date">Tarih sütunu</label><select class="ui-input" id="csv-date" data-csv="date">${opt(map.date)}</select></div>
+      <div class="ui-field"><label class="ui-label" for="csv-kg">Kilo sütunu</label><select class="ui-input" id="csv-kg" data-csv="kg">${opt(map.kg)}</select></div>
+      <div class="ui-field"><label class="ui-label" for="csv-fat">Yağ oranı (isteğe bağlı)</label><select class="ui-input" id="csv-fat" data-csv="fat">${opt(map.fat, 'Yok')}</select></div>
+      <div class="ui-fields2">
+        <div class="ui-field"><span class="ui-label">Kilo birimi</span><div class="ui-chips">${[['kg','kg'],['lb','lb (pound)']].map(([v, n]) => `<button class="ui-chip" data-act="csvUnit" data-v="${v}" aria-pressed="${map.unit === v}">${n}</button>`).join('')}</div></div>
+        <div class="ui-field"><label class="ui-label" for="csv-df">Tarih sırası</label><select class="ui-input" id="csv-df" data-csv="dayFirst"><option value="1" ${map.dayFirst ? 'selected' : ''}>Gün/Ay (20.10)</option><option value="0" ${map.dayFirst ? '' : 'selected'}>Ay/Gün (10/20)</option></select></div>
+      </div>
+      <div class="ml-est"><div class="ml-est-h"><span>Önizleme</span><b class="ui-num">${list.length} tartım</b></div>
+        ${list.length ? `<div class="ml-est-row" style="color:var(--ink2)"><span>${rangeLabel(list[0].date, list[list.length - 1].date)}</span></div>` + list.slice(-5).reverse().map(w => `<div class="ml-est-row"><span>${longDate(w.date)}</span><span class="ui-num">${fmt(w.kg)} kg${w.fat != null ? ` · %${fmt(w.fat)}` : ''}</span></div>`).join('') : '<div class="ml-est-row miss"><span>Bu seçimle tartı bulunamadı. Tarih ve kilo sütunlarını kontrol et.</span></div>'}
+      </div>`;
+    foot = `<button class="ui-btn" data-act="closeSheet">Vazgeç</button><button class="ui-btn pri" data-act="csvImport" ${list.length ? '' : 'disabled'}>${list.length ? list.length + ' tartımı ekle' : 'Ekle'}</button>`;
+  }
   if (sh.type === 'confirm') {
     t = sh.title; body = `<p style="margin:0;color:var(--ink2)">${sh.text}</p>`;
     foot = `<button class="ui-btn" data-act="closeSheet">Vazgeç</button><button class="ui-btn pri" data-act="confirmYes" style="${sh.danger ? 'background:var(--danger);border-color:var(--danger)' : ''}">${sh.yes}</button>`;
@@ -1271,33 +1288,125 @@ function pickFile(accept, cb) {
   inp.onchange = () => { const f = inp.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => cb(String(r.result)); r.readAsText(f); };
   inp.click();
 }
-function parseDateAny(v) {
-  v = String(v).trim().replace(/^"|"$/g, '');
-  if (/^\d{10}(\.\d+)?$/.test(v)) return dkey(new Date(+v * 1000));
-  if (/^\d{13}$/.test(v)) return dkey(new Date(+v));
-  let m = v.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/); if (m) return `${m[1]}-${pad(m[2])}-${pad(m[3])}`;
-  m = v.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})/); if (m) { let a = +m[1], b = +m[2]; if (v.includes('/') && b > 12) [a, b] = [b, a]; else if (v.includes('/') && a <= 12 && b <= 12) [a, b] = [b, a]; return `${m[3]}-${pad(b)}-${pad(a)}`; }
-  const d = new Date(v); return isNaN(d) ? null : dkey(d);
-}
-function parseScaleCsv(text) {
-  const rows = text.replace(/^﻿/, '').split(/\r?\n/).filter(r => r.trim());
-  if (rows.length < 2) return [];
-  const sep = [',', ';', '\t'].sort((a, b) => rows[0].split(b).length - rows[0].split(a).length)[0];
-  const split = r => { const out = []; let cur = '', q = false; for (const ch of r) { if (ch === '"') q = !q; else if (ch === sep && !q) { out.push(cur); cur = ''; } else cur += ch; } out.push(cur); return out.map(s => s.trim()); };
-  const head = split(rows[0]).map(h => h.toLowerCase());
-  const find = re => head.findIndex(h => re.test(h));
-  const di = find(/time|date|tarih|zaman/), wi = find(/^weight|weight\s*\(|ağırlık|agirlik|kilo|^kg|body weight/), fi = find(/fat|yağ|yag/);
-  if (di < 0 || wi < 0) return null;
-  const lbs = /lb/.test(head[wi]);
-  const byDay = {};
-  for (const r of rows.slice(1)) {
-    const c = split(r), date = parseDateAny(c[di]); let kg = num(c[wi]?.replace(/[^\d.,]/g, ''));
-    if (!date || !kg) continue; if (lbs) kg *= 0.453592;
-    if (kg < 25 || kg > 350) continue;
-    const fat = fi >= 0 ? num(c[fi]?.replace(/[^\d.,]/g, '')) : null;
-    if (!byDay[date]) byDay[date] = {date, kg: +kg.toFixed(1), fat: fat && fat < 80 ? +fat.toFixed(1) : null};
+/* Tartı CSV'si: her uygulamanın biçimi farklı olduğundan sütunlar başlıktan ve içerikten tahmin edilir,
+   kullanıcı önizlemede düzeltebilir. */
+const MONTH_IDX = {oca: 0, jan: 0, sub: 1, feb: 1, mar: 2, nis: 3, apr: 3, may: 4, haz: 5, jun: 5, tem: 6, jul: 6, agu: 7, aug: 7, eyl: 8, sep: 8, eki: 9, oct: 9, kas: 10, nov: 10, ara: 11, dec: 11};
+function splitCsvLine(line, sep) {
+  const out = []; let cur = '', q = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') { if (q && line[i + 1] === '"') { cur += '"'; i++; } else q = !q; }
+    else if (ch === sep && !q) { out.push(cur.trim()); cur = ''; }
+    else cur += ch;
   }
-  return Object.values(byDay);
+  out.push(cur.trim());
+  return out;
+}
+function parseTable(text) {
+  const lines = String(text).replace(/^﻿/, '').split(/\r\n|\n|\r/).filter(l => l.trim());
+  const sample = lines.slice(0, 40);
+  let best = {sep: ',', score: -1};
+  for (const sep of [',', ';', '\t', '|']) {
+    const counts = sample.map(l => splitCsvLine(l, sep).length).filter(n => n > 1);
+    if (!counts.length) continue;
+    const freq = {}; counts.forEach(n => freq[n] = (freq[n] || 0) + 1);
+    const [mode, hits] = Object.entries(freq).sort((x, y) => y[1] - x[1])[0];
+    const score = hits / sample.length + (+mode > 1 ? .01 * Math.min(+mode, 10) : 0);
+    if (score > best.score) best = {sep, score, mode: +mode};
+  }
+  const rows = lines.map(l => splitCsvLine(l, best.sep).map(c => c.replace(/^"|"$/g, '').trim()));
+  const width = best.mode || Math.max(...rows.map(r => r.length));
+  const isNumLike = c => /^[\s\d.,:/\-+T]+$/.test(c) && /\d/.test(c);
+  // Başlık: veri satırlarından önce gelen, çoğu hücresi yazı olan ilk geniş satır
+  let hi = -1;
+  for (let i = 0; i < Math.min(rows.length - 1, 15); i++) {
+    const r = rows[i];
+    if (r.length < Math.max(2, width * .6)) continue; // "Body", "com.samsung.health.weight,…" gibi bilgi satırları
+    const textCells = r.filter(c => c && !isNumLike(c) && parseDateCell(c) == null).length;
+    const next = rows[i + 1] || [];
+    if (textCells >= Math.ceil(r.filter(Boolean).length / 2) && next.some(c => isNumLike(c) || parseDateCell(c) != null)) { hi = i; break; }
+  }
+  const head = hi >= 0 ? rows[hi] : [];
+  const data = rows.slice(hi + 1).filter(r => r.length >= 2);
+  const ncol = Math.max(width, head.length);
+  const headers = [...Array(ncol)].map((_, i) => head[i] || `Sütun ${i + 1}`);
+  return {headers, data};
+}
+function parseDateCell(v, dayFirst = true, serial = false) {
+  v = String(v || '').trim().replace(/^"|"$/g, '').replace(/^\d{1,2}:\d{2}(:\d{2})?\s*,?\s*(?=\d)/, '');
+  if (!v) return null;
+  let d = null, m;
+  if (/^\d{10}(\.\d+)?$/.test(v)) d = new Date(+v * 1000);
+  else if (/^\d{13}$/.test(v)) d = new Date(+v);
+  else if (serial && /^\d{5}(\.\d+)?$/.test(v)) d = new Date(Math.round((+v - 25569) * 864e5) + new Date().getTimezoneOffset() * 6e4);
+  else if ((m = v.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?:[ T]+(\d{1,2})[:.](\d{2}))?/))) d = new Date(+m[1], m[2] - 1, +m[3], +(m[4] || 0), +(m[5] || 0));
+  else if ((m = v.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})(?:[ ,T]+(\d{1,2})[:.](\d{2}))?/))) {
+    let a = +m[1], b = +m[2], y = +m[3]; if (y < 100) y += 2000;
+    const df = a > 12 ? true : b > 12 ? false : dayFirst;
+    d = df ? new Date(y, b - 1, a, +(m[4] || 0), +(m[5] || 0)) : new Date(y, a - 1, b, +(m[4] || 0), +(m[5] || 0));
+  } else {
+    const f = fold(v);
+    if ((m = f.match(/(\d{1,2})\s+([a-z]{3})[a-z]*\.?,?\s+(\d{4})(?:\D+(\d{1,2}):(\d{2}))?/)) && MONTH_IDX[m[2]] != null) d = new Date(+m[3], MONTH_IDX[m[2]], +m[1], +(m[4] || 0), +(m[5] || 0));
+    else if ((m = f.match(/([a-z]{3})[a-z]*\.?\s+(\d{1,2}),?\s+(\d{4})(?:\D+(\d{1,2}):(\d{2}))?/)) && MONTH_IDX[m[1]] != null) d = new Date(+m[3], MONTH_IDX[m[1]], +m[2], +(m[4] || 0), +(m[5] || 0));
+  }
+  if (!d || isNaN(d)) return null;
+  const y = d.getFullYear();
+  return y >= 2000 && d <= Date.now() + 864e5 ? d.getTime() : null;
+}
+function parseNumCell(v) {
+  const c = String(v || '').replace(/[^\d.,\-]/g, '');
+  if (!/^-?\d+([.,]\d+)?$/.test(c)) return null;
+  return parseFloat(c.replace(',', '.'));
+}
+const median = a => { const x = [...a].sort((p, q) => p - q); return x.length ? x[Math.floor(x.length / 2)] : null; };
+// Sütunları tahmin et: {date, kg, fat, unit, dayFirst}
+function guessColumns(T) {
+  const H = T.headers.map(fold), rows = T.data.slice(0, 400);
+  const hint = (h, re) => re.test(h);
+  const DATE_H = /tarih|date|time|zaman|saat|datum|fecha|timestamp|olcum|measure|gun|day|kayit/;
+  const KG_H = /kilo|weight|agirlik|gewicht|peso|poids|kg|lb|vucut kutle|body mass|^mass/;
+  const NOT_KG = /bmi|vki|fat|yag|muscle|kas|water|su |sivi|bone|kemik|viscer|metabol|kcal|calor|protein|height|boy|age|yas|^id|lean|yagsiz|change|degis|fark|hedef|goal|target|bmr|skor|score|hydration|kutle indeks/;
+  const FAT_H = /fat|yag|fett|grasa|graisse/, NOT_FAT = /yagsiz|free|viscer|mass|kutle|kg|lb/;
+  const cols = T.headers.map((_, c) => {
+    const vals = rows.map(r => r[c]).filter(v => v != null && v !== '');
+    const n = Math.max(1, vals.length);
+    const nums = vals.map(parseNumCell).filter(x => x != null);
+    return {c, vals, dateRate: vals.filter(v => parseDateCell(v, true, hint(H[c], DATE_H))).length / n, numRate: nums.length / n, med: median(nums), lbCells: vals.some(v => /lb/i.test(v))};
+  });
+  const dateCol = cols.filter(x => x.dateRate >= .5).sort((x, y) => (y.dateRate + (hint(H[y.c], DATE_H) ? .3 : 0)) - (x.dateRate + (hint(H[x.c], DATE_H) ? .3 : 0)))[0];
+  const scoreKg = x => {
+    if (x.numRate < .5 || x.med == null || (dateCol && x.c === dateCol.c)) return -99;
+    const h = H[x.c], lb = /lb|pound/.test(h) || x.lbCells;
+    let s = 0;
+    if (hint(h, NOT_KG)) s -= 3;
+    if (hint(h, KG_H)) s += 2;
+    if (lb ? x.med >= 55 && x.med <= 770 : x.med >= 25 && x.med <= 350) s += 1; else s -= 5;
+    if (x.med >= 40 && x.med <= 200) s += .5;
+    return s;
+  };
+  const kgCol = cols.map(x => ({x, s: scoreKg(x)})).filter(o => o.s > -2).sort((p, q) => q.s - p.s)[0]?.x;
+  const fatCol = cols.find(x => x !== kgCol && x !== dateCol && hint(H[x.c], FAT_H) && !hint(H[x.c], NOT_FAT) && x.numRate >= .3 && x.med > 2 && x.med < 75);
+  let unit = 'kg';
+  if (kgCol && (/lb|pound/.test(H[kgCol.c]) || kgCol.lbCells || (!/kg/.test(H[kgCol.c]) && kgCol.med > 160))) unit = 'lb';
+  let dayFirst = true;
+  if (dateCol) for (const v of dateCol.vals.slice(0, 300)) { const m = String(v).match(/^(\d{1,2})[./-](\d{1,2})[./-]\d{2,4}/); if (!m) continue; if (+m[1] > 12) { dayFirst = true; break; } if (+m[2] > 12) { dayFirst = false; break; } }
+  return {date: dateCol?.c ?? -1, kg: kgCol?.c ?? -1, fat: fatCol?.c ?? -1, unit, dayFirst};
+}
+// Seçili eşleşmeyle tartı listesini üretir (günde bir: o günün en erken ölçümü)
+function buildWeights(T, map) {
+  if (map.date < 0 || map.kg < 0) return [];
+  const serial = /tarih|date|time|saat|zaman/.test(fold(T.headers[map.date]));
+  const byDay = {};
+  for (const r of T.data) {
+    const ms = parseDateCell(r[map.date], map.dayFirst, serial); if (ms == null) continue;
+    let kg = parseNumCell(r[map.kg]); if (kg == null) continue;
+    if (map.unit === 'lb') kg *= 0.453592;
+    if (kg < 25 || kg > 350) continue;
+    const fat = map.fat >= 0 ? parseNumCell(r[map.fat]) : null;
+    const date = dkey(new Date(ms));
+    if (!byDay[date] || ms < byDay[date].ms) byDay[date] = {date, ms, kg: +kg.toFixed(1), fat: fat != null && fat > 1 && fat < 75 ? +fat.toFixed(1) : null};
+  }
+  return Object.values(byDay).sort((a, b) => a.date.localeCompare(b.date)).map(({ms, ...w}) => w);
 }
 
 /* ---------------- olaylar ---------------- */
@@ -1338,12 +1447,20 @@ document.addEventListener('click', e => {
     case 'delWeight': confirmBox('Tartıyı sil', `${longDate(v)} tarihli tartı silinecek.`, 'Sil', () => { S.weights = S.weights.filter(w => w.date !== v); save(); }); break;
     case 'range': ui.range = +v; render(); break;
     case 'healthSync': post({cmd: 'health', days: 365, manual: true}); toast('Apple Sağlık’tan alınıyor…'); break;
-    case 'csv': pickFile('.csv,text/csv,text/plain', txt => {
-      const rows = parseScaleCsv(txt);
-      if (rows == null) { toast('Dosyada tarih ve kilo sütunu bulunamadı'); return; }
-      let n = 0; rows.forEach(r => { if (S.weights.some(w => w.date === r.date)) return; S.weights.push({...r, src: 'csv'}); n++; });
-      save(); render(); toast(n ? `${n} tartım eklendi` : 'Yeni tartım bulunamadı');
+    case 'csv': pickFile('.csv,.txt,.tsv,text/csv,text/plain', txt => {
+      const T = parseTable(txt);
+      if (!T.data.length) { toast('Dosyada okunabilir satır yok'); return; }
+      const map = guessColumns(T);
+      openSheet({type: 'csv', T, map, auto: map.date >= 0 && map.kg >= 0});
     }); break;
+    case 'csvUnit': ui.sheet.map.unit = v; keepSheet(); break;
+    case 'csvImport': {
+      const list = buildWeights(ui.sheet.T, ui.sheet.map);
+      let n = 0, skip = 0;
+      list.forEach(r => { const ex = S.weights.find(w => w.date === r.date); if (ex && ex.src === 'manual') { skip++; return; } if (ex) Object.assign(ex, r, {src: 'csv'}); else { S.weights.push({...r, src: 'csv'}); n++; } });
+      save(); closeSheet(); toast(`${n} yeni tartım eklendi${skip ? ` · ${skip} gün elle girilmişti, korundu` : ''}`);
+      break;
+    }
     case 'weekNav': { const n = addDays(ui.week, +v); if (n <= weekStart(todayKey())) { ui.week = n; render(); } break; }
     case 'copyReport': { const t = reportText(weekData(ui.week)); (navigator.clipboard?.writeText(t) || Promise.reject()).then(() => toast('Rapor panoya kopyalandı'), () => toast('Kopyalanamadı')); break; }
     case 'shareReport': navigator.share({title: 'Haftalık rapor', text: reportText(weekData(ui.week))}).catch(() => {}); break;
@@ -1411,6 +1528,7 @@ document.addEventListener('input', e => {
 });
 document.addEventListener('change', e => {
   const t = e.target;
+  if (t.dataset.csv && ui.sheet?.type === 'csv') { ui.sheet.map[t.dataset.csv] = t.dataset.csv === 'dayFirst' ? t.value === '1' : +t.value; keepSheet(); return; }
   if (t.dataset.set) { const n = num(t.value); const k = t.dataset.set; S.settings[k] = n && n > 0 ? Math.round(n) : (['waterGoal', 'kcalGoal'].includes(k) ? null : S.settings[k]); if (k === 'glass' && !(n > 0)) S.settings.glass = 250; save(); syncReminders(); render(); }
   if (t.dataset.rem) { const [a, b] = t.dataset.rem.split('.'); if (t.value) { S.settings.rem[a][b] = t.value; save(); syncReminders(); render(); } }
 });
