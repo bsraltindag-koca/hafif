@@ -169,6 +169,11 @@ input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and
 .ob-in input::-webkit-date-and-time-value{text-align:left}
 .ob-in input::placeholder{color:var(--ink3);font-weight:400}
 .ob-in span{color:var(--ink2);font-size:var(--fs-btn);font-weight:500;margin-left:6px}
+.ob-date{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.5fr) minmax(0,1.1fr);gap:8px}
+.ob-in select{flex:1;min-width:0;width:100%;height:100%;border:0;background:none;outline:none;font-size:17px;font-weight:500;color:var(--ink);-webkit-appearance:none;appearance:none;padding:0}
+.ob-in select:invalid,.ob-in select.empty{color:var(--ink3);font-weight:400}
+.ob-in .ob-chev{color:var(--ink3);margin-left:4px;pointer-events:none}
+.pf-date{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.5fr) minmax(0,1.1fr);gap:8px}
 .ob-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
 .ob-pick{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
 .ob-card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;height:64px;border:1.5px solid var(--line);border-radius:14px;background:var(--card);font-weight:600;color:var(--ink2);transition:.15s}
@@ -387,7 +392,7 @@ input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and
 <div id="app"></div>
 <script>
 'use strict';
-const APP_VERSION = '2.4';
+const APP_VERSION = '2.5';
 const STORE_KEY = 'hafif.v1';
 
 /* ---------------- yardımcılar ---------------- */
@@ -447,6 +452,7 @@ const IC = {
   camera:'<path d="M4 8h3l1.5-2.5h7L17 8h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/>',
   lock:'<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
   cake:'<path d="M4 21h16"/><path d="M5 21v-8a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v8"/><path d="M5 15c1.5 1 3 1 4.5 0s3-1 4.5 0 3 1 5 0"/><path d="M12 11V8"/><path d="M12 5.5c.8-.8.8-1.7 0-2.5-.8.8-.8 1.7 0 2.5z"/>',
+  chev:'<path d="m6 9 6 6 6-6"/>',
   leaf:'<path d="M5 19c0-8 5-14 15-14 0 10-6 15-14 15"/><path d="M5 19c3-4 6-6 9-7.5"/>',
 };
 const ico = (n, cls = '') => `<svg class="ui-ico ${cls}" viewBox="0 0 24 24" aria-hidden="true">${IC[n]}</svg>`;
@@ -1056,7 +1062,7 @@ function safePage(fn) {
 function render() {
   applyTheme();
   const app = $('#app');
-  if (!S.profile) { ui.ob ||= {step: 0, err: '', d: {name: '', sex: 'f', birth: '', height: '', weight: '', goal: '', activity: 1.375}}; app.innerHTML = renderOnboarding(); return; }
+  if (!S.profile) { ui.ob ||= {step: 0, err: '', d: {name: '', sex: 'f', bd: '', bm: '', by: '', height: '', weight: '', goal: '', activity: 1.375}}; app.innerHTML = renderOnboarding(); return; }
   const tabs = [['today','Bugün','today'],['weight','Kilo','scale'],['report','Rapor','report'],['journal','Günlük','journal'],['settings','Ayarlar','settings']];
   const scrollY = window.scrollY;
   app.innerHTML = `<div class="app-shell">
@@ -1080,6 +1086,24 @@ function ring(pct, color, size = 104, sw = 9, track = 'var(--line)') {
 }
 
 /* ---- giriş ---- */
+// Doğum tarihi için Gün / Ay / Yıl açılır listeleri; parts = {d, m, y} (metin)
+function birthSelects(attr, parts, cls) {
+  const maxY = new Date().getFullYear() - 12;
+  const sel = (key, label, opts) => `<select ${attr}="${key}" class="${cls === 'ob' ? (parts[key] ? '' : 'empty') : 'ui-input'}" aria-label="${label}"><option value="" ${parts[key] ? '' : 'selected'} disabled>${label}</option>${opts.map(([v, n]) => `<option value="${v}" ${String(parts[key]) === String(v) ? 'selected' : ''}>${n}</option>`).join('')}</select>`;
+  const lists = [
+    sel('d', 'Gün', [...Array(31)].map((_, i) => [i + 1, i + 1])),
+    sel('m', 'Ay', MONTHS.map((n, i) => [i + 1, n])),
+    sel('y', 'Yıl', [...Array(maxY - 1920 + 1)].map((_, i) => [maxY - i, maxY - i])),
+  ];
+  return cls === 'ob' ? `<div class="ob-date">${lists.map(l => `<label class="ob-in">${l}<span class="ob-chev">${ico('chev', 'sm')}</span></label>`).join('')}</div>`
+    : `<div class="pf-date">${lists.join('')}</div>`;
+}
+// Parçalardan geçerli bir YYYY-AA-GG üretir; eksikse '' , geçersizse null
+function composeBirth({d, m, y}) {
+  if (!d || !m || !y) return '';
+  const dt = new Date(+y, +m - 1, +d);
+  return dt.getMonth() === +m - 1 && dt.getDate() === +d ? `${y}-${pad(m)}-${pad(d)}` : null;
+}
 function renderOnboarding() {
   const o = ui.ob, d = o.d;
   const dots = `<div class="ob-dots">${[1, 2].map(i => `<i class="${o.step >= i ? 'on' : ''}"></i>`).join('')}</div>`;
@@ -1099,7 +1123,8 @@ function renderOnboarding() {
     body = `${top}<h1 class="ob-h">Seni tanıyalım</h1><p class="ob-sub">Kalori ve su ihtiyacını hesaplamak için.</p>
       ${field('name', 'Adın', '', 'text', 'Örn: Büşra')}
       <div class="ob-field"><span class="ui-label">Cinsiyet</span><div class="ob-pick">${[['f', 'Kadın'], ['m', 'Erkek']].map(([v, n]) => `<button type="button" class="ob-card" data-act="obSex" data-v="${v}" aria-pressed="${d.sex === v}">${n}</button>`).join('')}</div></div>
-      <div class="ob-row">${field('birth', 'Doğum tarihin', '', 'numeric', '', 'date', `max="${todayKey()}" min="1920-01-01"`)}${field('height', 'Boy', 'cm', 'numeric')}</div>
+      <div class="ob-field"><span class="ui-label">Doğum tarihin</span>${birthSelects('data-obb', {d: d.bd, m: d.bm, y: d.by}, 'ob')}</div>
+      ${field('height', 'Boy', 'cm', 'numeric')}
       <div class="ob-err">${o.err || ''}</div>
       ${foot('Devam')}`;
   } else {
@@ -1123,9 +1148,10 @@ function obNext() {
   const o = ui.ob, d = o.d;
   o.err = '';
   if (o.step === 1) {
-    const a = d.birth ? ageOf({birth: d.birth}) : null, h = num(d.height);
+    const birth = composeBirth({d: d.bd, m: d.bm, y: d.by}), a = birth ? ageOf({birth}) : null, h = num(d.height);
     if (!d.name.trim()) o.err = 'Adını yazar mısın?';
-    else if (!d.birth) o.err = 'Doğum tarihini seç.';
+    else if (birth === '') o.err = 'Doğum tarihinin gününü, ayını ve yılını seç.';
+    else if (birth === null) o.err = 'Bu tarih takvimde yok (örn. 31 Şubat). Günü kontrol eder misin?';
     else if (a == null || a < 12 || a > 100) o.err = 'Doğum tarihini kontrol eder misin? Uygulama 12 yaş ve üzeri için.';
     else if (!h || h < 100 || h > 250) o.err = 'Boyunu santimetre olarak gir (örn. 165).';
   }
@@ -1134,7 +1160,7 @@ function obNext() {
     if (!w || w < 25 || w > 350) o.err = 'Şu anki kilonu gir (örn. 82,5).';
     else if (!g || g < 25 || g > 350) o.err = 'Hedef kilonu gir.';
     if (!o.err) {
-      S.profile = {name: d.name.trim(), sex: d.sex, birth: d.birth, height: Math.round(num(d.height)), startWeight: w, goalWeight: g, activity: d.activity, startDate: todayKey()};
+      S.profile = {name: d.name.trim(), sex: d.sex, birth: composeBirth({d: d.bd, m: d.bm, y: d.by}), height: Math.round(num(d.height)), startWeight: w, goalWeight: g, activity: d.activity, startDate: todayKey()};
       S.weights.push({date: todayKey(), kg: w, fat: null, src: 'manual'});
       ui.ob = null; save(); syncReminders(); post({cmd: 'notifyPermission'}); render(); window.scrollTo(0, 0);
       return;
@@ -1577,8 +1603,8 @@ function renderSheet() {
     const p = S.profile;
     t = 'Profil ve hedef';
     body = `<div class="ui-field"><label class="ui-label" for="pf-name">Ad</label><input class="ui-input" id="pf-name" value="${esc(p.name)}" maxlength="24"></div>
+      <div class="ui-field"><span class="ui-label">Doğum tarihi</span>${birthSelects('data-pfb', p.birth ? {y: +p.birth.slice(0, 4), m: +p.birth.slice(5, 7), d: +p.birth.slice(8, 10)} : {}, 'pf')}</div>
       <div class="ui-fields2">
-        <div class="ui-field"><label class="ui-label" for="pf-birth">Doğum tarihi</label><input class="ui-input" id="pf-birth" type="date" max="${todayKey()}" min="1920-01-01" value="${p.birth || ''}"></div>
         <div class="ui-field"><label class="ui-label" for="pf-h">Boy (cm)</label><input class="ui-input" id="pf-h" inputmode="numeric" value="${p.height}"></div>
         <div class="ui-field"><label class="ui-label" for="pf-s">Başlangıç kilosu</label><input class="ui-input" id="pf-s" inputmode="decimal" value="${fmt(p.startWeight)}"></div>
         <div class="ui-field"><label class="ui-label" for="pf-g">Hedef kilo</label><input class="ui-input" id="pf-g" inputmode="decimal" value="${fmt(p.goalWeight)}"></div>
@@ -1943,7 +1969,10 @@ document.addEventListener('click', e => {
     case 'shareReport': navigator.share({title: 'Haftalık rapor', text: reportText(weekData(ui.week))}).catch(() => {}); break;
     case 'editProfile': openSheet({type: 'profile'}); break;
     case 'profileSave': {
-      const p = S.profile, birth = $('#pf-birth').value || p.birth, a = birth ? ageOf({birth}) : p.age, h = num($('#pf-h').value), sw = num($('#pf-s').value), g = num($('#pf-g').value);
+      const pb = k => $(`[data-pfb=${k}]`).value, picked = composeBirth({d: pb('d'), m: pb('m'), y: pb('y')});
+      if (picked === null) { toast('Bu tarih takvimde yok (örn. 31 Şubat)'); return; }
+      if (picked === '' && (pb('d') || pb('m') || pb('y'))) { toast('Doğum tarihinin gününü, ayını ve yılını seç'); return; }
+      const p = S.profile, birth = picked || p.birth, a = birth ? ageOf({birth}) : p.age, h = num($('#pf-h').value), sw = num($('#pf-s').value), g = num($('#pf-g').value);
       if (!a || !h || !sw || !g) { toast(birth || p.age ? 'Tüm alanları doldur' : 'Doğum tarihini seç'); return; }
       if (a < 12 || a > 100) { toast('Doğum tarihini kontrol et'); return; }
       Object.assign(p, {name: $('#pf-name').value.trim() || p.name, ...(birth ? {birth} : {}), height: Math.round(h), startWeight: sw, goalWeight: g, sex: chipVal('sex'), activity: +chipVal('activity')});
@@ -2005,6 +2034,7 @@ document.addEventListener('input', e => {
 document.addEventListener('change', e => {
   const t = e.target;
   if (t.dataset.ob && ui.ob) ui.ob.d[t.dataset.ob] = t.value;
+  if (t.dataset.obb && ui.ob) { ui.ob.d['b' + t.dataset.obb] = t.value; t.classList.toggle('empty', !t.value); if (ui.ob.err) { ui.ob.err = ''; const er = $('.ob-err'); if (er) er.textContent = ''; } }
   if (t.id === 'ms-date' && ui.sheet?.type === 'measure' && t.value) { ui.sheet.date = t.value; keepSheet(); return; }
   if (t.dataset.csv && ui.sheet?.type === 'csv') { ui.sheet.map[t.dataset.csv] = t.dataset.csv === 'dayFirst' ? t.value === '1' : +t.value; keepSheet(); return; }
   if (t.dataset.set) { const n = num(t.value); const k = t.dataset.set; S.settings[k] = n && n > 0 ? Math.round(n) : (['waterGoal', 'kcalGoal'].includes(k) ? null : S.settings[k]); if (k === 'glass' && !(n > 0)) S.settings.glass = 250; save(); syncReminders(); render(); }
