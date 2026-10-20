@@ -264,7 +264,7 @@ svg{display:block}
 <div id="app"></div>
 <script>
 'use strict';
-const APP_VERSION = '1.1';
+const APP_VERSION = '1.2';
 const STORE_KEY = 'hafif.v1';
 
 /* ---------------- yardımcılar ---------------- */
@@ -396,6 +396,18 @@ const QUOTES = [
 /* ---------------- kalori tahmini ----------------
    Her satır: anahtar kelimeler | 100 g'daki kcal | varsayılan porsiyon (g) | birime özel gram (isteğe bağlı)
    Değerler genel ortalamalardır; tarif ve porsiyona göre değişir. */
+// Türkçe harfleri sadeleştirir: "Çikolatası" → "cikolatasi"; böylece "cikolata" da "çikolata" da eşleşir
+const fold = s => String(s || '').toLocaleLowerCase('tr').replace(/[çğıöşüâîû]/g, c => ({'ç':'c','ğ':'g','ı':'i','ö':'o','ş':'s','ü':'u','â':'a','î':'i','û':'u'}[c]));
+function lev(a, b) {
+  if (Math.abs(a.length - b.length) > 2) return 9;
+  let prev = [...Array(b.length + 1).keys()];
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    for (let j = 1; j <= b.length; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    prev = cur;
+  }
+  return prev[b.length];
+}
 const FOOD_DB = `
 haşlanmış yumurta,yumurta|155|50|adet:50,tane:50
 yumurtalı omlet|154|60
@@ -516,12 +528,15 @@ sütlaç|120|200
 kek|380|60|dilim:60
 kurabiye|480|20
 bisküvi|450|8
+bitter çikolata,dark çikolata,siyah çikolata,bitter|580|20|kare:6
+sütlü çikolata|540|25|kare:6
 çikolata|540|25|kare:6
 dondurma|210|70|top:50
 lokum|350|15
 helva|500|40|kaşık:20
 puding|120|150
 şekerli çay|20|100
+bitki çay,yeşil çay,ıhlamur,adaçay,papatya çay,kuşburnu çay,rezene çay,nane limon,nane-limon|1|200|fincan:150
 çay|1|100
 türk kahve|15|70
 latte,sütlü kahve|55|250
@@ -555,39 +570,58 @@ kruvasan|410|60
 `.trim().split('\n').map(line => {
   const [keys, k, p, u] = line.split('|');
   const units = {};
-  (u || '').split(',').filter(Boolean).forEach(x => { const [n, g] = x.split(':'); units[n] = +g; });
-  return {keys: keys.split(','), name: keys.split(',')[0], k: +k, p: +p, u: units};
+  (u || '').split(',').filter(Boolean).forEach(x => { const [n, g] = x.split(':'); units[fold(n)] = +g; });
+  return {keys: keys.split(',').map(fold), name: keys.split(',')[0], k: +k, p: +p, u: units};
 });
-// Genel birim → gram (yiyeceğe özel değer yoksa)
-const UNIT_G = {'yemek kaşığı': 15, 'kaşık': 15, 'tatlı kaşığı': 7, 'çay kaşığı': 3, 'su bardağı': 200, 'çay bardağı': 100, 'bardak': 200, 'fincan': 70, 'kupa': 250, 'kepçe': 120, 'avuç': 30, 'şişe': 500, 'kutu': 330, 'top': 50, 'ölçek': 30, 'küp': 4, 'kare': 6};
-const UNIT_RE = /(yemek kaşığı|tatlı kaşığı|çay kaşığı|su bardağı|çay bardağı|kaşık|bardak|fincan|kupa|kepçe|avuç|şişe|kutu|top|ölçek|küp|kare|adet|tane|dilim|porsiyon|tabak|kase|gram|gr|g|ml)(?=\s|$)/;
-const NUM_WORDS = {'yarım': .5, 'çeyrek': .25, 'bir': 1, 'iki': 2, 'üç': 3, 'dört': 4, 'beş': 5, 'altı': 6, 'yedi': 7, 'sekiz': 8, 'dokuz': 9, 'on': 10};
+// Genel birim → gram (yiyeceğe özel değer yoksa); anahtarlar Türkçe harfsiz
+const UNIT_G = {'yemek kasigi': 15, 'kasik': 15, 'tatli kasigi': 7, 'cay kasigi': 3, 'su bardagi': 200, 'cay bardagi': 100, 'bardak': 200, 'fincan': 70, 'kupa': 250, 'kepce': 120, 'avuc': 30, 'sise': 500, 'kutu': 330, 'top': 50, 'olcek': 30, 'kup': 4, 'kare': 6};
+const UNIT_RE = /^(yemek kasig\S*|tatli kasig\S*|cay kasig\S*|su bardag\S*|cay bardag\S*|kasik\S*|bardak\S*|fincan\S*|kupa|kepce\S*|avuc\S*|sise\S*|kutu\S*|top|olcek\S*|kup|kare|adet|tane|dilim\S*|porsiyon\S*|tabak\S*|kase\S*|gram|gr|g|ml)(?=\s|$)/;
+const UNIT_NORM = u => u.startsWith('yemek kasig') ? 'kasik' : u.startsWith('tatli kasig') ? 'tatli kasigi' : u.startsWith('cay kasig') ? 'cay kasigi' : u.startsWith('su bardag') ? 'su bardagi' : u.startsWith('cay bardag') ? 'cay bardagi' : u.replace(/(kasik|bardak|fincan|kepce|avuc|sise|kutu|olcek|dilim|porsiyon|tabak|kase)\S*/, '$1');
+// Öğün metinlerinde sık geçen ama yiyecek olmayan kelimeler (yanlış eşleşmesinler)
+const STOP_RE = /^(biraz|az|cok|kadar|gibi|kahvalti\S*|ogle\S*|aksam\S*|sabah\S*|gece|yemeg\S*|yemek|ara|ogun\S*|tuzlu|soslu|sos\S*|baharat\S*|evde|ev|yapimi|disarida|icin|ile|hic|yok)$/;
+const NUM_WORDS = {'yarim': .5, 'ceyrek': .25, 'bir': 1, 'iki': 2, 'uc': 3, 'dort': 4, 'bes': 5, 'alti': 6, 'yedi': 7, 'sekiz': 8, 'dokuz': 9, 'on': 10};
+// Metindeki kelime dizisinde en iyi eşleşen yiyeceği bulur; tam eşleşme önce, sonra küçük yazım hatalarına tolerans
+function bestFood(words) {
+  let best = null;
+  for (const f of FOOD_DB) for (const key of f.keys) {
+    const n = key.split(' ').length, allow = key.length >= 7 ? 2 : key.length >= 4 ? 1 : 0;
+    for (let i = 0; i + n <= words.length; i++) {
+      const joined = words.slice(i, i + n).join(' ');
+      let d = joined.startsWith(key) ? 0 : 9;
+      if (d && allow && joined[0] === key[0]) for (let L = key.length - 1; L <= key.length + 1; L++) if (L > 2 && joined.length >= L) d = Math.min(d, lev(key, joined.slice(0, L)));
+      if (d > allow) continue;
+      const score = key.length * 10 - d * 25;
+      if (!best || score > best.score) best = {food: f, i, n, score};
+    }
+  }
+  return best;
+}
 function estimateMeal(text) {
-  const parts = String(text || '').toLocaleLowerCase('tr').split(/[,;\n+]|\s+ve\s+|\s+ile\s+/).map(x => x.trim()).filter(Boolean);
+  const parts = String(text || '').split(/[,;\n+]|\s+ve\s+|\s+ile\s+/i).map(x => x.trim()).filter(Boolean);
   const items = [];
   for (const raw of parts) {
-    let t = raw, qty = null;
+    let t = fold(raw).split(/\s+/).filter(w => w && !STOP_RE.test(w)).join(' '), qty = null;
     let m = t.match(/^(\d+(?:[.,]\d+)?)(?:\s*[-–]\s*(\d+(?:[.,]\d+)?))?/);
     if (m) { qty = num(m[1]); if (m[2]) qty = (qty + num(m[2])) / 2; t = t.slice(m[0].length).trim(); }
     else if (/^½/.test(t)) { qty = .5; t = t.slice(1).trim(); }
-    else { m = t.match(/^(yarım|çeyrek|bir|iki|üç|dört|beş|altı|yedi|sekiz|dokuz|on)(?=\s|$)(\s+buçuk(?=\s|$))?/); if (m) { qty = NUM_WORDS[m[1]] + (m[2] ? .5 : 0); t = t.slice(m[0].length).trim(); } }
-    if (/^buçuk(?=\s|$)/.test(t)) { qty = (qty || 0) + .5; t = t.replace(/^buçuk\s*/, ''); }
-    m = t.match(/^(\d+)\s*x\b/) || t.match(/\bx\s*(\d+)$/); if (m) { qty = (qty || 1) * +m[1]; t = t.replace(m[0], '').trim(); }
-    const um = t.match(UNIT_RE); const unit = um && um.index <= 1 ? um[1] : null;
-    // Bir kalemde birden çok yiyecek olabilir ("kuru fasulye pilav"): en uzun eşleşmeden başlayarak hepsini bul
-    let rest = ' ' + t, kcal = null, first = true;
+    else { m = t.match(/^(yarim|ceyrek|bir|iki|uc|dort|bes|alti|yedi|sekiz|dokuz|on)(?=\s|$)(\s+bucuk(?=\s|$))?/); if (m) { qty = NUM_WORDS[m[1]] + (m[2] ? .5 : 0); t = t.slice(m[0].length).trim(); } }
+    if (/^bucuk(?=\s|$)/.test(t)) { qty = (qty || 0) + .5; t = t.replace(/^bucuk\s*/, ''); }
+    m = t.match(/^(\d+)\s*x(?=\s|$)/) || t.match(/(?:^|\s)x\s*(\d+)$/); if (m) { qty = (qty || 1) * +m[1]; t = t.replace(m[0], ' ').trim(); }
+    const um = t.match(UNIT_RE); const unit = um ? UNIT_NORM(um[1]) : null;
+    if (um) t = t.slice(um[0].length).trim();
+    // Bir kalemde birden çok yiyecek olabilir ("kuru fasulye pilav")
+    let words = t.split(/\s+/).filter(Boolean), kcal = null, first = true;
     const seen = new Set();
-    for (let guard = 0; guard < 6; guard++) {
-      let food = null, key = '';
-      for (const f of FOOD_DB) for (const k of f.keys) if (k.length > key.length && rest.includes(' ' + k)) { food = f; key = k; }
-      if (!food) break;
-      const at = rest.indexOf(' ' + key), endSp = rest.indexOf(' ', at + 1 + key.length), end = endSp < 0 ? rest.length : endSp;
-      const fullWord = rest.slice(at + 1, end);
-      rest = rest.slice(0, at) + rest.slice(end);
-      if (seen.has(food)) continue;
-      seen.add(food);
-      if (/s[iıuü]z$/.test(fullWord)) continue; // "şekersiz", "yağsız"
-      const q = first ? (qty ?? 1) : 1, un = first ? unit : null;
+    for (let guard = 0; guard < 6 && words.length; guard++) {
+      const hit = bestFood(words);
+      if (!hit) break;
+      const used = words.slice(hit.i, hit.i + hit.n);
+      words = words.slice(0, hit.i).concat(words.slice(hit.i + hit.n));
+      if (seen.has(hit.food)) continue;
+      seen.add(hit.food);
+      if (/s[iu]z$/.test(used[used.length - 1])) continue; // "şekersiz", "yağsız"
+      if (/^s[iu]z$/.test(words[hit.i] || '')) { words.splice(hit.i, 1); continue; } // "şeker siz"
+      const food = hit.food, q = first ? (qty ?? 1) : 1, un = first ? unit : null;
       let grams;
       if (un === 'gram' || un === 'gr' || un === 'g' || un === 'ml') grams = q;
       else if (un) grams = q * (food.u[un] ?? UNIT_G[un] ?? food.p);
